@@ -83,7 +83,7 @@ void SolidThread::updateContent()
         GraphicBufferMapper &mapper = GraphicBufferMapper::get();
         sp<ANativeWindow> window(s);
         ANativeWindowBuffer *b;
-        void *y, *uv;
+        char *y, *uv;
 
         if (!TestBase::lockNV12(window, &b, &y, &uv)) {
             requestExit();

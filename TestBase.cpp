@@ -166,12 +166,13 @@ void TestBase::createSurface()
     mHeight = h;
 }
 
-bool TestBase::lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, void **y, void **uv)
+bool TestBase::lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, char **y, char **uv)
 {
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     ANativeWindow *w = window.get();
     Rect bounds(0, 0, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
     void *d[2];
+    d[0] = d[1] = 0;
 
     int res = 0;
     res = w->dequeueBuffer(w, b);
@@ -194,8 +195,18 @@ bool TestBase::lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, void 
         return false;
     }
 
-    *y = d[0];
-    *uv = d[1];
+    *y = (char*)d[0];
+    *uv = (char*)d[1];
+
+    if (*y == 0) {
+        LOGE("\"%s\" y pointer invalid", mSpec->name.c_str());
+        mapper.unlock((*b)->handle);
+        w->cancelBuffer(w, *b);
+        return false;
+    }
+
+    if (*uv == 0)
+        *uv = *y + (*b)->height * (*b)->stride;
 
     return true;
 }

@@ -33,7 +33,7 @@ class TestBase : public Thread {
         virtual void updateContent() = 0;
         void signalExit();
         void createSurface();
-        bool lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, void **y, void **uv);
+        bool lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, char **y, char **uv);
 
         sp<SurfaceSpec> mSpec;
 

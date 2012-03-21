@@ -107,7 +107,7 @@ void FileThread::updateContent()
         GraphicBufferMapper &mapper = GraphicBufferMapper::get();
         sp<ANativeWindow> window(s);
         ANativeWindowBuffer *b;
-        void *y, *uv;
+        char *y, *uv;
 
         if (!TestBase::lockNV12(window, &b, &y, &uv)) {
             requestExit();
@@ -125,11 +125,11 @@ void FileThread::updateContent()
             unsigned int sl = mSpec->srcGeometry.stride, dl = b->stride;
             unsigned int h = min(mSpec->srcGeometry.height, b->height);
             char *src = mData + mFrameIndex * sl * mSpec->srcGeometry.height * 3 / 2;
-            char *dst = (char*)y;
+            char *dst = y;
             unsigned int b = min(sl, dl);
             for (unsigned int i = 0; i < h; i++, dst += dl, src += sl)
                 memcpy(dst, src, b);
-            dst = (char*)uv;
+            dst = uv;
             for (unsigned int i = 0; i < h / 2; i++, dst += dl, src += sl)
                 memcpy(dst, src, b);
         }
