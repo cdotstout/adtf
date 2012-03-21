@@ -40,6 +40,84 @@ inline Rect parseRect(stringstream& ss, string filename, unsigned int n,
     return Rect(x, y, x + w, y + h);
 }
 
+inline bool parseBool(stringstream& ss, string line, string filename, unsigned int n,
+        string prop)
+{
+    int b = 0;
+    ss >> b;
+    if (ss.fail()) {
+        string v;
+        ss.clear();
+        ss.str(line);
+        ss >> prop >> v;
+        if (v == "true")
+            return true;
+        else if (v == "false")
+            return false;
+        else {
+            LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), v.c_str());
+            return false;
+        }
+    } else
+        return (b == 1);
+}
+
+inline PixelFormat parsePixelFormat(stringstream& ss, string line, string filename,
+        unsigned int n, string prop)
+{
+    PixelFormat f = 0;
+
+    // If format is given as an int cast to PixelFormat, otherwise translate
+    ss >> f;
+    if (ss.fail()) {
+        // Try to translate string since it wasn't an int
+        string pf;
+        ss.clear();
+        ss.str(line);
+        ss >> prop >> pf;
+
+        if (pf == "PIXEL_FORMAT_UNKNOWN")
+            f = PIXEL_FORMAT_UNKNOWN;
+        else if (pf == "PIXEL_FORMAT_NONE")
+            f = PIXEL_FORMAT_NONE;
+        else if (pf == "PIXEL_FORMAT_CUSTOM")
+            f = PIXEL_FORMAT_CUSTOM;
+        else if (pf == "PIXEL_FORMAT_TRANSLUCENT")
+            f = PIXEL_FORMAT_TRANSLUCENT;
+        else if (pf == "PIXEL_FORMAT_TRANSPARENT")
+            f = PIXEL_FORMAT_TRANSPARENT;
+        else if (pf == "PIXEL_FORMAT_OPAQUE")
+            f = PIXEL_FORMAT_OPAQUE;
+        else if (pf == "PIXEL_FORMAT_RGBA_8888")
+            f = PIXEL_FORMAT_RGBA_8888;
+        else if (pf == "PIXEL_FORMAT_RGBX_8888")
+            f = PIXEL_FORMAT_RGBX_8888;
+        else if (pf == "PIXEL_FORMAT_RGB_888")
+            f = PIXEL_FORMAT_RGB_888;
+        else if (pf == "PIXEL_FORMAT_RGB_565")
+            f = PIXEL_FORMAT_RGB_565;
+        else if (pf == "PIXEL_FORMAT_BGRA_8888")
+            f = PIXEL_FORMAT_BGRA_8888;
+        else if (pf == "PIXEL_FORMAT_RGBA_5551")
+            f = PIXEL_FORMAT_RGBA_5551;
+        else if (pf == "PIXEL_FORMAT_RGBA_4444")
+            f = PIXEL_FORMAT_RGBA_4444;
+        else if (pf == "PIXEL_FORMAT_A_8")
+            f = PIXEL_FORMAT_A_8;
+        else if (pf == "PIXEL_FORMAT_L_8")
+            f = PIXEL_FORMAT_L_8;
+        else if (pf == "PIXEL_FORMAT_LA_88")
+            f = PIXEL_FORMAT_LA_88;
+        else if (pf == "PIXEL_FORMAT_RGB_332")
+            f = PIXEL_FORMAT_RGB_332;
+        else if (pf == "HAL_PIXEL_FORMAT_TI_NV12")
+            f = HAL_PIXEL_FORMAT_TI_NV12;
+        else
+            LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), pf.c_str());
+    }
+    return f;
+}
+
 bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
 {
     ifstream f(filename.c_str(), ifstream::in);
@@ -84,70 +162,21 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
             }
             spec->name = line.substr(5);
         } else if (prop == "keepalive") {
-            int b = 0;
-            ss >> b;
-            if (ss.fail()) {
-                string v;
-                ss.clear();
-                ss.str(line);
-                ss >> prop >> v;
-                if (v == "true")
-                    spec->keepAlive = true;
-                else if (v == "false")
-                    spec->keepAlive = false;
-                else
-                    LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), v.c_str());
-            } else
-                spec->keepAlive = b == 1;
+            spec->keepAlive = parseBool(ss, line, filename, n, prop);
+            continue;
+        } else if (prop == "async") {
+            spec->async = parseBool(ss, line, filename, n, prop);
             continue;
         } else if (prop == "format") {
-            // If format is given as an int cast to PixelFormat, otherwise translate
-            ss >> spec->format;
-            if (ss.fail()) {
-                // Try to translate string since it wasn't an int
-                string pf;
-                ss.clear();
-                ss.str(line);
-                ss >> prop >> pf;
-
-                if (pf == "PIXEL_FORMAT_UNKNOWN")
-                    spec->format = PIXEL_FORMAT_UNKNOWN;
-                else if (pf == "PIXEL_FORMAT_NONE")
-                    spec->format = PIXEL_FORMAT_NONE;
-                else if (pf == "PIXEL_FORMAT_CUSTOM")
-                    spec->format = PIXEL_FORMAT_CUSTOM;
-                else if (pf == "PIXEL_FORMAT_TRANSLUCENT")
-                    spec->format = PIXEL_FORMAT_TRANSLUCENT;
-                else if (pf == "PIXEL_FORMAT_TRANSPARENT")
-                    spec->format = PIXEL_FORMAT_TRANSPARENT;
-                else if (pf == "PIXEL_FORMAT_OPAQUE")
-                    spec->format = PIXEL_FORMAT_OPAQUE;
-                else if (pf == "PIXEL_FORMAT_RGBA_8888")
-                    spec->format = PIXEL_FORMAT_RGBA_8888;
-                else if (pf == "PIXEL_FORMAT_RGBX_8888")
-                    spec->format = PIXEL_FORMAT_RGBX_8888;
-                else if (pf == "PIXEL_FORMAT_RGB_888")
-                    spec->format = PIXEL_FORMAT_RGB_888;
-                else if (pf == "PIXEL_FORMAT_RGB_565")
-                    spec->format = PIXEL_FORMAT_RGB_565;
-                else if (pf == "PIXEL_FORMAT_BGRA_8888")
-                    spec->format = PIXEL_FORMAT_BGRA_8888;
-                else if (pf == "PIXEL_FORMAT_RGBA_5551")
-                    spec->format = PIXEL_FORMAT_RGBA_5551;
-                else if (pf == "PIXEL_FORMAT_RGBA_4444")
-                    spec->format = PIXEL_FORMAT_RGBA_4444;
-                else if (pf == "PIXEL_FORMAT_A_8")
-                    spec->format = PIXEL_FORMAT_A_8;
-                else if (pf == "PIXEL_FORMAT_L_8")
-                    spec->format = PIXEL_FORMAT_L_8;
-                else if (pf == "PIXEL_FORMAT_LA_88")
-                    spec->format = PIXEL_FORMAT_LA_88;
-                else if (pf == "PIXEL_FORMAT_RGB_332")
-                    spec->format = PIXEL_FORMAT_RGB_332;
-                else
-                    LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), pf.c_str());
-            }
-            continue;        
+            spec->format = parsePixelFormat(ss, line, filename, n, prop);
+            if (spec->buffer_format == PIXEL_FORMAT_NONE)
+                spec->buffer_format = spec->format;
+            continue;
+        } else if (prop == "buffer_format") {
+            spec->buffer_format = parsePixelFormat(ss, line, filename, n, prop);
+            if (spec->format == PIXEL_FORMAT_NONE)
+                spec->format = spec->buffer_format;
+            continue;
         } else if (prop == "zorder") {
             ss >> spec->zOrder;
         } else if (prop == "width") {

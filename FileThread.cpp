@@ -64,63 +64,100 @@ status_t FileThread::readyToRun()
     // and pixel format. If actual file size is not a multiple of one frame size
     // we'll bail out to avoid crashing and burning.
 
-    Surface::SurfaceInfo info;
-    sp<Surface> s = mSurfaceControl->getSurface();
-    if (s->lock(&info) != NO_ERROR) { // only to get SurfaceInfo
-        LOGE("\"%s\" failed to lock surface", mSpec->name.c_str());
-        signalExit();
-        return UNKNOWN_ERROR;
-    }
-    s->unlockAndPost();
+    if (mSpec->buffer_format == HAL_PIXEL_FORMAT_TI_NV12) {
+        mFrameSize = mSpec->srcGeometry.stride * mSpec->srcGeometry.height * 3 / 2;
+    } else {
+        mBpp = bytesPerPixel(mSpec->format);
+        mLineByLine = false;
+        mFrameSize = mSpec->srcGeometry.stride * mSpec->srcGeometry.height * mBpp;
 
-    mBpp = bytesPerPixel(mSpec->format);
-    mLineByLine = false;
-    mFrameSize = mSpec->srcGeometry.stride * mSpec->srcGeometry.height * mBpp;
+        Surface::SurfaceInfo info;
+        sp<Surface> s = mSurfaceControl->getSurface();
+        if (s->lock(&info) != NO_ERROR) { // only to get SurfaceInfo
+            LOGE("\"%s\" failed to lock surface", mSpec->name.c_str());
+            signalExit();
+            return UNKNOWN_ERROR;
+        }
+        s->unlockAndPost();
+        mLineByLine = info.s != (uint32_t)mSpec->srcGeometry.stride ||
+                info.h != (uint32_t)mSpec->srcGeometry.height;
+    }
 
     if ((mLength % mFrameSize != 0)) {
-        LOGE("\"%s\" '%s' doesn't contain an integer number of frames",
-                    mSpec->name.c_str(), mSpec->content.c_str());
-        signalExit();
-        return UNKNOWN_ERROR;
+            LOGE("\"%s\" '%s' doesn't contain an integer number of frames",
+                        mSpec->name.c_str(), mSpec->content.c_str());
+            signalExit();
+            return UNKNOWN_ERROR;
     }
-
-    // Do we have scaling going on, or is input stride wrong?
-    mLineByLine = info.s != (uint32_t)mSpec->srcGeometry.stride ||
-            info.h != (uint32_t)mSpec->srcGeometry.height;
 
     mFrames = mLength / mFrameSize;
     mFrameIndex = 0;
 
-    LOGD("\"%s\" opened '%s' with %d frames, line-by-line %d", mSpec->name.c_str(),
-            mSpec->content.c_str(), mFrames, mLineByLine);
+    LOGD("\"%s\" opened '%s' with %d frames", mSpec->name.c_str(),
+            mSpec->content.c_str(), mFrames);
 
     return TestBase::readyToRun();
 }
 
 void FileThread::updateContent()
 {
-    Surface::SurfaceInfo info;
     sp<Surface> s = mSurfaceControl->getSurface();
-    if (s->lock(&info) != NO_ERROR) { // only to get SurfaceInfo
-        LOGE("\"%s\" failed to lock surface", mSpec->name.c_str());
-        requestExit();
-        return;
-    }
-    char* dst = reinterpret_cast<char*>(info.bits);
 
-    if (mLineByLine) {
-        unsigned int sl = mSpec->srcGeometry.stride * mBpp, dl = info.s * mBpp;
-        unsigned int h = min((unsigned int)mSpec->srcGeometry.height, info.h);
-        char* src = mData + mFrameIndex * sl * mSpec->srcGeometry.height;
-        unsigned int b = min(sl, dl);
-        for (unsigned int i = 0; i < h; i++, dst += dl, src += sl)
-            memcpy(dst, src, b);
+    if (mSpec->buffer_format == HAL_PIXEL_FORMAT_TI_NV12) {
+        GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+        sp<ANativeWindow> window(s);
+        ANativeWindowBuffer *b;
+        void *y, *uv;
+
+        if (!TestBase::lockNV12(window, &b, &y, &uv)) {
+            requestExit();
+            return;
+        }
+
+        if (b->stride == mSpec->srcGeometry.stride &&
+                b->height == mSpec->srcGeometry.height) {
+            char *src = mData + mFrameIndex * b->stride * b->height * 3 / 2;
+            int len = b->stride * b->height;
+            memcpy(y, src, len);
+            memcpy(uv, src + len, len / 2);
+        } else {
+            // Copy line by line
+            unsigned int sl = mSpec->srcGeometry.stride, dl = b->stride;
+            unsigned int h = min(mSpec->srcGeometry.height, b->height);
+            char *src = mData + mFrameIndex * sl * mSpec->srcGeometry.height * 3 / 2;
+            char *dst = (char*)y;
+            unsigned int b = min(sl, dl);
+            for (unsigned int i = 0; i < h; i++, dst += dl, src += sl)
+                memcpy(dst, src, b);
+            dst = (char*)uv;
+            for (unsigned int i = 0; i < h / 2; i++, dst += dl, src += sl)
+                memcpy(dst, src, b);
+        }
+
+        mapper.unlock(b->handle);
+        window.get()->queueBuffer(window.get(), b);
     } else {
-        // Simple and wished for case
-       memcpy(dst, mData + mFrameIndex * mFrameSize, mFrameSize);
-    }
+        Surface::SurfaceInfo info;
+        if (s->lock(&info) != NO_ERROR) {
+            LOGE("\"%s\" failed to lock surface", mSpec->name.c_str());
+            requestExit();
+            return;
+        }
 
-    s->unlockAndPost();
+        char* dst = reinterpret_cast<char*>(info.bits);
+        if (mLineByLine) {
+            unsigned int sl = mSpec->srcGeometry.stride * mBpp, dl = info.s * mBpp;
+            unsigned int h = min((unsigned int)mSpec->srcGeometry.height, info.h);
+            char* src = mData + mFrameIndex * sl * mSpec->srcGeometry.height;
+            unsigned int b = min(sl, dl);
+            for (unsigned int i = 0; i < h; i++, dst += dl, src += sl)
+                memcpy(dst, src, b);
+        } else {
+           memcpy(dst, mData + mFrameIndex * mFrameSize, mFrameSize);
+        }
+
+        s->unlockAndPost();
+    }
 
     mFrameIndex = (mFrameIndex + 1) % mFrames;
 }

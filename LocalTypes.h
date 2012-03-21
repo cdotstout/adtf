@@ -6,6 +6,8 @@
 #include <utils/RefBase.h>
 #include <string>
 
+#define HAL_PIXEL_FORMAT_TI_NV12 0x100
+
 enum ContentType { SOLID_FILL, LOCAL_FILE };
 
 class DutyCycle {
@@ -38,8 +40,10 @@ class SurfaceSpec : public android::RefBase {
         std::string name;
         bool keepAlive;
         android::PixelFormat format;
+        android::PixelFormat buffer_format;
         int zOrder;
         int orientation;
+        bool async;
         SrcGeometry srcGeometry;
         android::Rect outRect;
         ContentType contentType;

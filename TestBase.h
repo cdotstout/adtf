@@ -7,9 +7,15 @@
 
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#include <ui/GraphicBufferMapper.h>
 
 #include "LocalTypes.h"
 #include "Stat.h"
+
+#define GRALLOC_USAGE GRALLOC_USAGE_HW_TEXTURE | \
+                             GRALLOC_USAGE_HW_RENDER | \
+                             GRALLOC_USAGE_SW_READ_RARELY | \
+                             GRALLOC_USAGE_SW_WRITE_NEVER
 
 using namespace android;
 
@@ -27,6 +33,7 @@ class TestBase : public Thread {
         virtual void updateContent() = 0;
         void signalExit();
         void createSurface();
+        bool lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, void **y, void **uv);
 
         sp<SurfaceSpec> mSpec;
 

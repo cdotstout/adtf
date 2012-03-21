@@ -36,6 +36,16 @@ status_t TestBase::readyToRun()
 {
     status_t status = NO_ERROR;
 
+    // buffer_format can differ from format iff buffer_format is HAL_PIXEL_FORMAT_TI_NV12
+
+    if (mSpec->format != mSpec->buffer_format &&
+            mSpec->buffer_format != HAL_PIXEL_FORMAT_TI_NV12) {
+        status = UNKNOWN_ERROR;
+        LOGE("\"%s\" unsupported combination of formats", mSpec->name.c_str());
+        signalExit();
+        return status;
+    }
+
     status = mComposerClient->initCheck();
     if (status != NO_ERROR) {
         LOGE("\"%s\" failed composer init check", mSpec->name.c_str());
@@ -54,16 +64,49 @@ status_t TestBase::readyToRun()
 
     mStat.clear();
 
+    sp<Surface> surface = mSurfaceControl->getSurface();
+    sp<ANativeWindow> window(surface);
+    ANativeWindow *w = window.get();
+
+    if (mSpec->async) {
+        status |= native_window_api_connect(w, NATIVE_WINDOW_API_MEDIA);
+        if (status != 0) {
+            LOGE("\"%s\" failed to set async mode", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
+    }
+
+    if (mSpec->buffer_format != mSpec->format) {
+        int min = 0;
+        status |= w->query(w, NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &min);
+        status |= native_window_set_usage(w, GRALLOC_USAGE);
+        status |= native_window_set_buffer_count(w, min + 1);
+        status |= native_window_set_buffers_dimensions(w, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
+        status |= native_window_set_buffers_format(w, mSpec->buffer_format);
+        status |= native_window_set_scaling_mode(w, NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
+        if (status != 0) {
+            LOGE("\"%s\" failed to init buffers", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
+    }
+
     if (mSpec->srcGeometry.crop.isValid()) {
-        sp<Surface> s = mSurfaceControl->getSurface();
-        sp<ANativeWindow> w(s);
         android_native_rect_t c;
         c.left = mSpec->srcGeometry.crop.left;
         c.top = mSpec->srcGeometry.crop.top;
         c.right = mSpec->srcGeometry.crop.right;
         c.bottom = mSpec->srcGeometry.crop.bottom;
-        native_window_set_crop(w.get(), &c);
+        status |= native_window_set_crop(w, &c);
+        if (status != 0) {
+            LOGE("\"%s\" failed to set crop", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
     }
+
+    // TODO: Orientation
 
     SurfaceComposerClient::openGlobalTransaction();
     mStat.openTransaction();
@@ -109,7 +152,7 @@ void TestBase::createSurface()
         h = mSpec->srcGeometry.height;
 
     if (w <= 0 || h <= 0)
-        LOGE("\"%s\" invalig source geometry %dx%d", mSpec->name.c_str(), w, h);
+        LOGE("\"%s\" invalid source geometry %dx%d", mSpec->name.c_str(), w, h);
 
     mSurfaceControl = mComposerClient->createSurface(
             String8(mSpec->name.c_str()),
@@ -121,6 +164,40 @@ void TestBase::createSurface()
     );
     mWidth = w;
     mHeight = h;
+}
+
+bool TestBase::lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, void **y, void **uv)
+{
+    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    ANativeWindow *w = window.get();
+    Rect bounds(0, 0, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
+    void *d[2];
+
+    int res = 0;
+    res = w->dequeueBuffer(w, b);
+    if (res != 0) {
+        LOGE("\"%s\" dequeueBuffer failed", mSpec->name.c_str());
+        return false;
+    }
+
+    res = w->lockBuffer(w, *b);
+    if (res != 0) {
+        LOGE("\"%s\" lockBuffer failed", mSpec->name.c_str());
+        w->cancelBuffer(w, *b);
+        return false;
+    }
+
+    res = mapper.lock((*b)->handle, GRALLOC_USAGE, bounds, d);
+    if (res != 0) {
+        LOGE("\"%s\" mapper.lock failed", mSpec->name.c_str());
+        w->cancelBuffer(w, *b);
+        return false;
+    }
+
+    *y = d[0];
+    *uv = d[1];
+
+    return true;
 }
 
 bool TestBase::updateContent(bool force)

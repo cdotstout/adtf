@@ -18,7 +18,7 @@ status_t SolidThread::readyToRun()
     stringstream ss(stringstream::in | stringstream::out);
     ss.str(mSpec->content);
 
-    mBpp = bytesPerPixel(mSpec->format);
+    mBpp = (mSpec->buffer_format == HAL_PIXEL_FORMAT_TI_NV12) ? 2 : bytesPerPixel(mSpec->format);
     if (mBpp > 4 || mBpp < 1) {
         LOGE("\"%s\" can't handle %d bytes per pixel", mSpec->name.c_str(), mBpp);
         signalExit();
@@ -48,6 +48,7 @@ status_t SolidThread::readyToRun()
         LOGW("\"%s\" no colors specified, using random", mSpec->name.c_str());
         mColors.push_back (ULONG_MAX + 1);
     }
+
     LOGD("\"%s\" got %d colors, bytes per pixel %d",
             mSpec->name.c_str(), mColors.size(), mBpp);
 
@@ -76,8 +77,30 @@ void SolidThread::updateContent()
         b3 = (v & 0x000000FF);
     }
 
-    Surface::SurfaceInfo info;
     sp<Surface> s = mSurfaceControl->getSurface();
+
+    if (mSpec->buffer_format == HAL_PIXEL_FORMAT_TI_NV12) {
+        GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+        sp<ANativeWindow> window(s);
+        ANativeWindowBuffer *b;
+        void *y, *uv;
+
+        if (!TestBase::lockNV12(window, &b, &y, &uv)) {
+            requestExit();
+            return;
+        }
+
+        size_t len = b->stride * b->height;
+        memset(y, b0, len);
+        memset(uv, b1, len / 2);
+
+        mapper.unlock(b->handle);
+        window.get()->queueBuffer(window.get(), b);
+        return;
+    }
+
+    Surface::SurfaceInfo info;
+
     if (s->lock(&info) != NO_ERROR) {
         LOGE("\"%s\" failed to lock surface", mSpec->name.c_str());
         requestExit();
