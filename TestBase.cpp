@@ -106,7 +106,15 @@ status_t TestBase::readyToRun()
         }
     }
 
-    // TODO: Orientation
+    if (mSpec->transform != 0) {
+        LOGE("\"%s\" setting transform %d", mSpec->name.c_str(), mSpec->transform);
+        status |= native_window_set_buffers_transform(w, mSpec->transform);
+        if (status != 0) {
+            LOGE("\"%s\" failed to set transform", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
+    }
 
     SurfaceComposerClient::openGlobalTransaction();
     mStat.openTransaction();

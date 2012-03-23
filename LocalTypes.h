@@ -42,7 +42,7 @@ class SurfaceSpec : public android::RefBase {
         android::PixelFormat format;
         android::PixelFormat buffer_format;
         int zOrder;
-        int orientation;
+        int transform;
         bool async;
         SrcGeometry srcGeometry;
         android::Rect outRect;

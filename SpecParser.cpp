@@ -118,6 +118,40 @@ inline PixelFormat parsePixelFormat(stringstream& ss, string line, string filena
     return f;
 }
 
+inline int parseTransform(stringstream& ss, string line, string filename,
+        unsigned int n, string prop)
+{
+    int t = 0, v = 0;
+    string sv;
+    stringstream ssv(stringstream::in | stringstream::out);
+
+    while (ss >> sv) {
+        v = 0;
+        ssv.clear();
+        ssv.str(sv);
+
+        ssv >> v;
+        if (ssv.fail()) {
+            if (sv == "NATIVE_WINDOW_TRANSFORM_FLIP_H" || sv == "HAL_TRANSFORM_FLIP_H")
+                v = HAL_TRANSFORM_FLIP_H;
+            else if (sv == "NATIVE_WINDOW_TRANSFORM_FLIP_V" || sv == "HAL_TRANSFORM_FLIP_V")
+                v = HAL_TRANSFORM_FLIP_V;
+            else if (sv == "NATIVE_WINDOW_TRANSFORM_ROT_90" || sv == "HAL_TRANSFORM_ROT_90")
+                v = HAL_TRANSFORM_ROT_90;
+            else if (sv == "NATIVE_WINDOW_TRANSFORM_ROT_180" || sv == "HAL_TRANSFORM_ROT_180")
+                v = HAL_TRANSFORM_ROT_180;
+            else if (sv == "NATIVE_WINDOW_TRANSFORM_ROT_270" || sv == "HAL_TRANSFORM_ROT_270")
+                v = HAL_TRANSFORM_ROT_270;
+            else
+                LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), sv.c_str());
+        }
+
+        t |= v;
+        sv.clear();
+    }
+    return t;
+}
+
 bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
 {
     ifstream f(filename.c_str(), ifstream::in);
@@ -179,6 +213,9 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
             continue;
         } else if (prop == "zorder") {
             ss >> spec->zOrder;
+        } else if (prop == "transform") {
+            spec->transform = parseTransform(ss, line, filename, n, prop);
+            continue;
         } else if (prop == "width") {
             ss >> spec->srcGeometry.width;
             if (spec->srcGeometry.width > spec->srcGeometry.stride)
