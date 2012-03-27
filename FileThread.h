@@ -1,6 +1,8 @@
 #ifndef _FILE_THREAD_H
 #define _FILE_THREAD_H
 
+#include <vector>
+
 #include "TestBase.h"
 
 using namespace android;
@@ -16,6 +18,8 @@ class FileThread : public TestBase {
         virtual void updateContent();
 
     private:
+        bool initTexture(void* p);
+
         int mFd;
         char* mData;
         size_t mLength;
@@ -24,6 +28,7 @@ class FileThread : public TestBase {
         size_t mFrameIndex;
         bool mLineByLine;
         int mBpp;
+        vector<GLuint> mTIds;
 };
 
 #endif

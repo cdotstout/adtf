@@ -8,7 +8,17 @@
 
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 
-enum ContentType { SOLID_FILL, LOCAL_FILE };
+namespace ContentType {
+    enum Enum { SOLID, FILE };
+};
+
+namespace RenderFlags {
+    enum Enum {
+        KEEPALIVE      = 1 << 0,
+        GL              = 1 << 1,
+        ASYNC           = 1 << 2
+    };
+};
 
 class DutyCycle {
     public:
@@ -38,19 +48,21 @@ class SrcGeometry {
 class SurfaceSpec : public android::RefBase {
     public:
         std::string name;
-        bool keepAlive;
+        int renderFlags;
         android::PixelFormat format;
-        android::PixelFormat buffer_format;
+        android::PixelFormat bufferFormat;
         int zOrder;
         int transform;
-        bool async;
         SrcGeometry srcGeometry;
         android::Rect outRect;
-        ContentType contentType;
+        ContentType::Enum contentType;
         std::string content;
         UpdateParams updateParams;
         uint32_t flags;
 
+        bool renderFlag(RenderFlags::Enum f) {
+            return (renderFlags & f) != 0;
+        };
     private:
         SurfaceSpec& operator = (SurfaceSpec& li);
 };

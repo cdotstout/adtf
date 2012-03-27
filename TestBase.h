@@ -9,6 +9,9 @@
 #include <surfaceflinger/SurfaceComposerClient.h>
 #include <ui/GraphicBufferMapper.h>
 
+#include <GLES/gl.h>
+#include <GLES/glext.h>
+
 #include "LocalTypes.h"
 #include "Stat.h"
 
@@ -39,6 +42,11 @@ class TestBase : public Thread {
 
         sp<SurfaceComposerClient> mComposerClient;
         sp<SurfaceControl> mSurfaceControl;
+        EGLDisplay mEglDisplay;
+        EGLSurface mEglSurface;
+        EGLContext mEglContext;
+        int mWidth;
+        int mHeight;
 
     private:
         int getVisibility();
@@ -55,8 +63,6 @@ class TestBase : public Thread {
         unsigned int mVisibleCount;
         bool mVisible;
 
-        int mWidth;
-        int mHeight;
         int mLeft;
         int mTop;
         nsecs_t mLastIter;

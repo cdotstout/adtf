@@ -18,7 +18,7 @@ status_t SolidThread::readyToRun()
     stringstream ss(stringstream::in | stringstream::out);
     ss.str(mSpec->content);
 
-    mBpp = (mSpec->buffer_format == HAL_PIXEL_FORMAT_TI_NV12) ? 2 : bytesPerPixel(mSpec->format);
+    mBpp = (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_NV12) ? 2 : bytesPerPixel(mSpec->format);
     if (mBpp > 4 || mBpp < 1) {
         LOGE("\"%s\" can't handle %d bytes per pixel", mSpec->name.c_str(), mBpp);
         signalExit();
@@ -49,8 +49,8 @@ status_t SolidThread::readyToRun()
         mColors.push_back (ULONG_MAX + 1);
     }
 
-    LOGD("\"%s\" got %d colors, bytes per pixel %d",
-            mSpec->name.c_str(), mColors.size(), mBpp);
+    LOGD("\"%s\" got %d colors, bytes per pixel %d, gl %d",
+            mSpec->name.c_str(), mColors.size(), mBpp, mSpec->renderFlag(RenderFlags::GL));
 
     return TestBase::readyToRun();
 }
@@ -79,7 +79,15 @@ void SolidThread::updateContent()
 
     sp<Surface> s = mSurfaceControl->getSurface();
 
-    if (mSpec->buffer_format == HAL_PIXEL_FORMAT_TI_NV12) {
+    if (mSpec->renderFlag(RenderFlags::GL)) {
+        // Though a bit unintuitive, always interprete bytes as RBGA for gl for simplicity
+        glClearColor(b0 / 255.0, b1 / 255.0, b2 / 255.0, b3 / 255.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        eglSwapBuffers(mEglDisplay, mEglSurface);
+        return;
+    }
+
+    if (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_NV12) {
         GraphicBufferMapper &mapper = GraphicBufferMapper::get();
         sp<ANativeWindow> window(s);
         ANativeWindowBuffer *b;

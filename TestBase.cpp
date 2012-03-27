@@ -10,7 +10,8 @@ using namespace android;
 
 TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
         Mutex &exitLock, Condition &exitCondition) :
-    Thread(false), mSpec(spec), mComposerClient(client),
+    Thread(false), mSpec(spec), mComposerClient(client), mSurfaceControl(0),
+    mEglDisplay(0), mEglSurface(0), mEglContext(0),
     mExitLock(exitLock), mExitCondition(exitCondition), mUpdateCount(0),
     mUpdating(true), mVisibleCount(0), mVisible(false)
 {
@@ -36,16 +37,6 @@ status_t TestBase::readyToRun()
 {
     status_t status = NO_ERROR;
 
-    // buffer_format can differ from format iff buffer_format is HAL_PIXEL_FORMAT_TI_NV12
-
-    if (mSpec->format != mSpec->buffer_format &&
-            mSpec->buffer_format != HAL_PIXEL_FORMAT_TI_NV12) {
-        status = UNKNOWN_ERROR;
-        LOGE("\"%s\" unsupported combination of formats", mSpec->name.c_str());
-        signalExit();
-        return status;
-    }
-
     status = mComposerClient->initCheck();
     if (status != NO_ERROR) {
         LOGE("\"%s\" failed composer init check", mSpec->name.c_str());
@@ -68,27 +59,29 @@ status_t TestBase::readyToRun()
     sp<ANativeWindow> window(surface);
     ANativeWindow *w = window.get();
 
-    if (mSpec->async) {
-        status |= native_window_api_connect(w, NATIVE_WINDOW_API_MEDIA);
-        if (status != 0) {
-            LOGE("\"%s\" failed to set async mode", mSpec->name.c_str());
-            signalExit();
-            return status;
+    if (!mSpec->renderFlag(RenderFlags::GL)) {
+        if (mSpec->renderFlag(RenderFlags::ASYNC)) {
+            status |= native_window_api_connect(w, NATIVE_WINDOW_API_MEDIA);
+            if (status != 0) {
+                LOGE("\"%s\" failed to set async mode", mSpec->name.c_str());
+                signalExit();
+                return status;
+            }
         }
-    }
 
-    if (mSpec->buffer_format != mSpec->format) {
-        int min = 0;
-        status |= w->query(w, NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &min);
-        status |= native_window_set_usage(w, GRALLOC_USAGE);
-        status |= native_window_set_buffer_count(w, min + 1);
-        status |= native_window_set_buffers_dimensions(w, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
-        status |= native_window_set_buffers_format(w, mSpec->buffer_format);
-        status |= native_window_set_scaling_mode(w, NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
-        if (status != 0) {
-            LOGE("\"%s\" failed to init buffers", mSpec->name.c_str());
-            signalExit();
-            return status;
+        if (mSpec->bufferFormat != mSpec->format) {
+            int min = 0;
+            status |= w->query(w, NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &min);
+            status |= native_window_set_usage(w, GRALLOC_USAGE);
+            status |= native_window_set_buffer_count(w, min + 1);
+            status |= native_window_set_buffers_dimensions(w, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
+            status |= native_window_set_buffers_format(w, mSpec->bufferFormat);
+            status |= native_window_set_scaling_mode(w, NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
+            if (status != 0) {
+                LOGE("\"%s\" failed to init buffers", mSpec->name.c_str());
+                signalExit();
+                return status;
+            }
         }
     }
 
@@ -141,8 +134,6 @@ status_t TestBase::readyToRun()
     mVisibleCount = 0;
     mLastIter = systemTime();
 
-    LOGD("\"%s\" starts %s", mSpec->name.c_str(), (mVisible ? "visible" : "hidden"));
-
     return NO_ERROR;
 }
 
@@ -172,6 +163,32 @@ void TestBase::createSurface()
     );
     mWidth = w;
     mHeight = h;
+
+    if (!mSpec->renderFlag(RenderFlags::GL))
+        return;
+
+    const EGLint attribs[] = {
+            EGL_RED_SIZE,   8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE,  8,
+            EGL_DEPTH_SIZE, 0,
+            EGL_NONE
+    };
+
+    EGLint dummy;
+    EGLConfig config;
+    sp<Surface> s = mSurfaceControl->getSurface();
+
+    mEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+
+    eglInitialize(mEglDisplay, 0, 0);
+    eglChooseConfig(mEglDisplay, attribs, &config, 1, &dummy);
+    mEglSurface = eglCreateWindowSurface(mEglDisplay, config, s.get(), NULL);
+    mEglContext = eglCreateContext(mEglDisplay, config, NULL, NULL);
+
+    if (eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext) == EGL_FALSE) {
+        LOGE("\"%s\" eglMakeCurrent failed", mSpec->name.c_str());
+    }
 }
 
 bool TestBase::lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, char **y, char **uv)

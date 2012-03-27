@@ -2,21 +2,25 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
-	adtf.cpp \
-	FileThread.cpp \
-	TestBase.cpp \
-	ThreadManager.cpp \
-	SolidThread.cpp \
-	SpecParser.cpp \
-	Stat.cpp \
+    adtf.cpp \
+    FileThread.cpp \
+    TestBase.cpp \
+    ThreadManager.cpp \
+    SolidThread.cpp \
+    SpecParser.cpp \
+    Stat.cpp \
+
+LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES
 
 LOCAL_SHARED_LIBRARIES := \
-	libcutils \
+    libcutils \
     libbinder \
-	libgui \
-	libutils \
-	libui \
+    libgui \
+    libutils \
+    libui \
     libstlport \
+    libGLESv1_CM \
+    libEGL \
 
 LOCAL_C_INCLUDES := \
     bionic \

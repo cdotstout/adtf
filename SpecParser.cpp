@@ -118,6 +118,36 @@ inline PixelFormat parsePixelFormat(stringstream& ss, string line, string filena
     return f;
 }
 
+inline int parseRenderFlags(stringstream& ss, string line, string filename,
+        unsigned int n, string prop)
+{
+    int f = 0, v = 0;
+    string sv;
+    stringstream ssv(stringstream::in | stringstream::out);
+
+    while (ss >> sv) {
+        v = 0;
+        ssv.clear();
+        ssv.str(sv);
+
+        ssv >> v;
+        if (ssv.fail()) {
+            if (sv == "KEEPALIVE" || sv == "keepalive")
+                v = RenderFlags::KEEPALIVE;
+            else if (sv == "GL" || sv == "gl")
+                v = RenderFlags::GL;
+            else if (sv == "ASYNC" || sv == "async")
+                v = RenderFlags::ASYNC;
+            else
+                LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), sv.c_str());
+        }
+
+        f |= v;
+        sv.clear();
+    }
+    return f;
+}
+
 inline int parseTransform(stringstream& ss, string line, string filename,
         unsigned int n, string prop)
 {
@@ -181,6 +211,7 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
             if (spec != 0)
                 specs.push_back(spec);
             spec = sp<SurfaceSpec>(new SurfaceSpec());
+            spec->renderFlags = 0;
             continue;
         }
 
@@ -195,21 +226,18 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
                 continue;
             }
             spec->name = line.substr(5);
-        } else if (prop == "keepalive") {
-            spec->keepAlive = parseBool(ss, line, filename, n, prop);
-            continue;
-        } else if (prop == "async") {
-            spec->async = parseBool(ss, line, filename, n, prop);
+        } else if (prop == "render_flags") {
+            spec->renderFlags = parseRenderFlags(ss, line, filename, n, prop);
             continue;
         } else if (prop == "format") {
             spec->format = parsePixelFormat(ss, line, filename, n, prop);
-            if (spec->buffer_format == PIXEL_FORMAT_NONE)
-                spec->buffer_format = spec->format;
+            if (spec->bufferFormat == PIXEL_FORMAT_NONE)
+                spec->bufferFormat = spec->format;
             continue;
         } else if (prop == "buffer_format") {
-            spec->buffer_format = parsePixelFormat(ss, line, filename, n, prop);
+            spec->bufferFormat = parsePixelFormat(ss, line, filename, n, prop);
             if (spec->format == PIXEL_FORMAT_NONE)
-                spec->format = spec->buffer_format;
+                spec->format = spec->bufferFormat;
             continue;
         } else if (prop == "zorder") {
             ss >> spec->zOrder;
@@ -238,10 +266,10 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
             if (ss.fail()) {
                 LOGW("%s:%u invalid %s", filename.c_str(), n, prop.c_str());
             } else {
-                if (t == "solid")
-                    spec->contentType = SOLID_FILL;
-                else if (t == "file")
-                    spec->contentType = LOCAL_FILE;
+                if (t == "solid" || t == "SOLID")
+                    spec->contentType = ContentType::SOLID;
+                else if (t == "file" || t == "FILE")
+                    spec->contentType = ContentType::FILE;
                 else
                     LOGW("%s:%u invalid %s", filename.c_str(), n, prop.c_str());
             }

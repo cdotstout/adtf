@@ -112,6 +112,7 @@ void Stat::dump(string what)
     ss << " p: " << mPosCount;
     ss << " s: " << mSizeCount;
     ss << " v: " << mVisCount;
+    ss << " d: " << sinceClear();
 
     LOGI("stat \"%s\"%s", what.c_str(), ss.str().c_str());
 }

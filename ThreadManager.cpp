@@ -19,9 +19,9 @@ status_t ThreadManager::readyToRun()
     for (List<sp<SurfaceSpec> >::iterator it = mSpecs.begin(); it != mSpecs.end(); ++it) {
         sp<SurfaceSpec> spec = *it;
         sp<TestBase> thread;
-        if (spec->contentType == SOLID_FILL)
+        if (spec->contentType == ContentType::SOLID)
             thread = sp<TestBase>(new SolidThread(spec, composerClient, mLock, mCondition));
-        else if (spec->contentType == LOCAL_FILE)
+        else if (spec->contentType == ContentType::FILE)
             thread = sp<TestBase>(new FileThread(spec, composerClient, mLock, mCondition));
 
         mThreads.push_back(thread);
@@ -49,10 +49,10 @@ bool ThreadManager::threadLoop()
             if (thread->done()) {
                 it = mThreads.erase(it); // TODO: Put thread in separate list to keep instance alive (final surface showing until all is done)
                 thread->join();
-                LOGD("\"%s\" thread exited, keepAlive %s",
+                LOGD("\"%s\" thread exited, keepAlive %d",
                         thread->getSpec()->name.c_str(),
-                        (thread->getSpec()->keepAlive ? "true": "false"));
-                if (thread->getSpec()->keepAlive)
+                        thread->getSpec()->renderFlag(RenderFlags::KEEPALIVE));
+                if (thread->getSpec()->renderFlag(RenderFlags::KEEPALIVE))
                     mGhosts.push_back(thread);
             }
         }
