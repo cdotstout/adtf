@@ -13,6 +13,8 @@
 #include "ThreadManager.h"
 #include "SpecParser.h"
 
+#define VERSION "0.1.0"
+
 using namespace android;
 using namespace std;
 
@@ -26,6 +28,9 @@ void run(List<sp<SurfaceSpec> >& specs)
 int main (int argc, char** argv)
 {
     if (argc < 2) {
+#ifdef VERSION
+        cout << "Version " << VERSION << endl;
+#endif
         cout << "Usage: " << argv[0] << " path_to_test_spec1 path_to_test_spec2 (...)" << endl;
         return -1;
     }
