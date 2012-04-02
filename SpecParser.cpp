@@ -270,6 +270,8 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
                     spec->contentType = ContentType::SOLID;
                 else if (t == "file" || t == "FILE")
                     spec->contentType = ContentType::FILE;
+                else if (t == "plugin" || t == "PLUGIN")
+                    spec->contentType = ContentType::PLUGIN;
                 else
                     LOGW("%s:%u invalid %s", filename.c_str(), n, prop.c_str());
             }

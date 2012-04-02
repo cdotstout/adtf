@@ -1,5 +1,6 @@
 #include "FileThread.h"
 #include "SolidThread.h"
+#include "PluginThread.h"
 
 using namespace android;
 

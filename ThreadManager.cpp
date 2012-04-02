@@ -23,6 +23,8 @@ status_t ThreadManager::readyToRun()
             thread = sp<TestBase>(new SolidThread(spec, composerClient, mLock, mCondition));
         else if (spec->contentType == ContentType::FILE)
             thread = sp<TestBase>(new FileThread(spec, composerClient, mLock, mCondition));
+        else if (spec->contentType == ContentType::PLUGIN)
+            thread = sp<TestBase>(new PluginThread(spec, composerClient, mLock, mCondition));
 
         mThreads.push_back(thread);
     }

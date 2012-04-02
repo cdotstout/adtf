@@ -9,7 +9,7 @@
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 
 namespace ContentType {
-    enum Enum { SOLID, FILE };
+    enum Enum { SOLID, FILE, PLUGIN };
 };
 
 namespace RenderFlags {
@@ -28,7 +28,7 @@ class DutyCycle {
 
 class UpdateParams {
     public:
-        unsigned int iterations;
+        long iterations;
         unsigned int latency;
         DutyCycle contentUpdateCycle;
         android::Rect srcCropStep;

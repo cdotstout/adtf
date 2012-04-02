@@ -3,6 +3,7 @@
 #include <surfaceflinger/ISurfaceComposer.h>
 
 #include <unistd.h>
+#include <vector>
 
 #include "TestBase.h"
 
@@ -20,6 +21,15 @@ TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
 
 TestBase::~TestBase()
 {
+    if (mEglDisplay != 0) {
+        if (mEglSurface != 0) {
+            eglMakeCurrent(mEglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            eglDestroySurface(mEglDisplay, mEglSurface);
+        }
+        if (mEglContext != 0)
+            eglDestroyContext(mEglDisplay, mEglContext);
+    }
+
     LOGD("\"%s\" thread going away", mSpec->name.c_str());
 }
 
@@ -167,28 +177,178 @@ void TestBase::createSurface()
     if (!mSpec->renderFlag(RenderFlags::GL))
         return;
 
-    const EGLint attribs[] = {
-            EGL_RED_SIZE,   8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE,  8,
-            EGL_DEPTH_SIZE, 0,
-            EGL_NONE
+    EGLConfig config = NULL;
+    mEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglInitialize(mEglDisplay, 0, 0);
+    chooseEGLConfig(mEglDisplay, &config);
+    if (config == NULL) {
+        LOGE("\"%s\" chooseEGLConfig failed", mSpec->name.c_str());
+        return; // TODO: return false to signal error
+    }
+
+    // 33 attributes used for debugging
+    int attr[] = {
+        EGL_BUFFER_SIZE, EGL_ALPHA_SIZE, EGL_BLUE_SIZE, EGL_GREEN_SIZE,
+        EGL_RED_SIZE, EGL_DEPTH_SIZE, EGL_STENCIL_SIZE, EGL_CONFIG_CAVEAT,
+        EGL_CONFIG_ID, EGL_LEVEL, EGL_MAX_PBUFFER_HEIGHT,
+        EGL_MAX_PBUFFER_PIXELS, EGL_MAX_PBUFFER_WIDTH, EGL_NATIVE_RENDERABLE,
+        EGL_NATIVE_VISUAL_ID, EGL_NATIVE_VISUAL_TYPE,
+        0x3030, // EGL_PRESERVED_RESOURCES
+        EGL_SAMPLES, EGL_SAMPLE_BUFFERS, EGL_SURFACE_TYPE,
+        EGL_TRANSPARENT_TYPE, EGL_TRANSPARENT_RED_VALUE,
+        EGL_TRANSPARENT_GREEN_VALUE, EGL_TRANSPARENT_BLUE_VALUE,
+        0x3039, // EGL_BIND_TO_TEXTURE_RGB
+        0x303A, // EGL_BIND_TO_TEXTURE_RGBA,
+        0x303B, // EGL_MIN_SWAP_INTERVAL,
+        0x303C, // EGL_MAX_SWAP_INTERVAL,
+        EGL_LUMINANCE_SIZE, EGL_ALPHA_MASK_SIZE, EGL_COLOR_BUFFER_TYPE,
+        EGL_RENDERABLE_TYPE,
+        0x3042 // EGL_CONFORMANT
     };
 
-    EGLint dummy;
-    EGLConfig config;
-    sp<Surface> s = mSurfaceControl->getSurface();
+    const char* attr_names[] = {
+        "EGL_BUFFER_SIZE", "EGL_ALPHA_SIZE", "EGL_BLUE_SIZE", "EGL_GREEN_SIZE",
+        "EGL_RED_SIZE", "EGL_DEPTH_SIZE", "EGL_STENCIL_SIZE", "EGL_CONFIG_CAVEAT",
+        "EGL_CONFIG_ID", "EGL_LEVEL", "EGL_MAX_PBUFFER_HEIGHT",
+        "EGL_MAX_PBUFFER_PIXELS", "EGL_MAX_PBUFFER_WIDTH", "EGL_NATIVE_RENDERABLE",
+        "EGL_NATIVE_VISUAL_ID", "EGL_NATIVE_VISUAL_TYPE", "EGL_PRESERVED_RESOURCES",
+        "EGL_SAMPLES", "EGL_SAMPLE_BUFFERS", "EGL_SURFACE_TYPE", "EGL_TRANSPARENT_TYPE",
+        "EGL_TRANSPARENT_RED_VALUE", "EGL_TRANSPARENT_GREEN_VALUE",
+        "EGL_TRANSPARENT_BLUE_VALUE", "EGL_BIND_TO_TEXTURE_RGB",
+        "EGL_BIND_TO_TEXTURE_RGBA", "EGL_MIN_SWAP_INTERVAL", "EGL_MAX_SWAP_INTERVAL",
+        "EGL_LUMINANCE_SIZE", "EGL_ALPHA_MASK_SIZE", "EGL_COLOR_BUFFER_TYPE",
+        "EGL_RENDERABLE_TYPE", "EGL_CONFORMANT"
+    };
 
-    mEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLint value;
+    for (int j = 0; j < 33; j++) {
+        if (eglGetConfigAttrib(mEglDisplay, config, attr[j], &value) == EGL_TRUE)
+            LOGD("\"%s\" EGLConfig %s : %d", mSpec->name.c_str(), attr_names[j], value);
+        else
+            while (eglGetError() != EGL_SUCCESS);
+    }
 
-    eglInitialize(mEglDisplay, 0, 0);
-    eglChooseConfig(mEglDisplay, attribs, &config, 1, &dummy);
-    mEglSurface = eglCreateWindowSurface(mEglDisplay, config, s.get(), NULL);
-    mEglContext = eglCreateContext(mEglDisplay, config, NULL, NULL);
+    mEglSurface = eglCreateWindowSurface(mEglDisplay, config,
+            mSurfaceControl->getSurface().get(), NULL);
+    mEglContext = createEGLContext(mEglDisplay, config);
 
     if (eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext) == EGL_FALSE) {
         LOGE("\"%s\" eglMakeCurrent failed", mSpec->name.c_str());
     }
+}
+
+bool TestBase::sizeChanged()
+{
+    if (mSpec->renderFlag(RenderFlags::GL)) {
+
+        if (eglMakeCurrent(mEglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) == EGL_FALSE) {
+            LOGE("\"%s\" eglMakeCurrent failed", mSpec->name.c_str());
+            requestExit();
+            return false;
+        }
+
+        if (eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext) == EGL_FALSE) {
+            LOGE("\"%s\" eglMakeCurrent failed", mSpec->name.c_str());
+            requestExit();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Unless overridden, choose config matching surface format, GLES 1
+void TestBase::chooseEGLConfig(EGLDisplay display, EGLConfig *config)
+{
+    int a, r, g, b;
+    a = r = g = b = 0;
+    *config = NULL;
+
+    // Note: Non explicit formats are translated in SurfaceFlinger::createNormalSurface
+    // If translation changes there, this must be updated. Use explicit formats to avoid problems
+    switch (mSpec->format) {
+        // Translated to PIXEL_FORMAT_RGBA_8888
+        case PIXEL_FORMAT_TRANSLUCENT:
+        case PIXEL_FORMAT_TRANSPARENT:
+        case PIXEL_FORMAT_RGBA_8888:
+        case PIXEL_FORMAT_BGRA_8888:
+            a = r = g = b = 8;
+            break;
+
+        case PIXEL_FORMAT_OPAQUE:
+            // Warning: This one is board platform specific and should not be used!
+            // Translated to PIXEL_FORMAT_RGBX_8888 for most
+            LOGW("\"%s\" PIXEL_FORMAT_OPAQUE used for EGL, treating as PIXEL_FORMAT_RGBX_8888", mSpec->name.c_str());
+        case PIXEL_FORMAT_RGBX_8888:
+        case PIXEL_FORMAT_RGB_888:
+            r = g = b = 8;
+            a = 0;
+        break;
+
+        case PIXEL_FORMAT_RGB_565:
+            r = b = 5;
+            g = 6;
+            a = 0;
+            break;
+        case PIXEL_FORMAT_RGBA_5551:
+            r = g = b = 5;
+            a = 1;
+            break;
+        case PIXEL_FORMAT_RGBA_4444:
+            a = r = g = b = 4;
+            break;
+
+        case PIXEL_FORMAT_NONE:
+        case PIXEL_FORMAT_CUSTOM:
+        default:
+            LOGE("\"%s\" invalid format", mSpec->name.c_str());
+            return;
+    }
+
+    const EGLint attribs[] = {
+        EGL_RED_SIZE,   r,
+        EGL_GREEN_SIZE, g,
+        EGL_BLUE_SIZE,  b,
+        EGL_ALPHA_SIZE, a,
+        EGL_NONE
+    };
+
+    LOGD("\"%s\" calling eglChooseConfig with sizes r=%d g=%d b=%d a=%d",
+            mSpec->name.c_str(), r, g, b, a);
+
+    EGLint num;
+    vector<EGLConfig> v;
+
+    eglChooseConfig(display, attribs, NULL, 0, &num);
+    v.reserve(num);
+    eglChooseConfig(display, attribs, &v[0], num, &num);
+
+    LOGD("\"%s\" eglChooseConfig returned %d configs", mSpec->name.c_str(), num);
+
+    // Take the first found config that matches exactly
+    for (int i = 0; i < num; i++) {
+        EGLint rv = -1, gv = -1, bv = -1, av = -1;
+        eglGetConfigAttrib(mEglDisplay, v[i], EGL_RED_SIZE, &rv);
+        eglGetConfigAttrib(mEglDisplay, v[i], EGL_GREEN_SIZE, &gv);
+        eglGetConfigAttrib(mEglDisplay, v[i], EGL_BLUE_SIZE, &bv);
+        eglGetConfigAttrib(mEglDisplay, v[i], EGL_ALPHA_SIZE, &av);
+        if (rv == r && gv == g && bv == b && av == a) {
+            LOGD("\"%s\" using config %d with sizes r=%d g=%d b=%d a=%d",
+                mSpec->name.c_str(), i, rv, gv, bv, av);
+            memcpy(config, &v[i], sizeof(EGLConfig));
+            return;
+        }
+    }
+
+    // No exact match, warn and return first one
+    LOGW("\"%s\" no matching EGLConfig, using default", mSpec->name.c_str());
+    eglChooseConfig(display, attribs, config, 1, &num);
+}
+
+// Must be overridden for GLES 2
+EGLContext TestBase::createEGLContext(EGLDisplay display, EGLConfig config)
+{
+    return eglCreateContext(display, config, EGL_NO_CONTEXT, NULL);
 }
 
 bool TestBase::lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, char **y, char **uv)
@@ -335,15 +495,22 @@ bool TestBase::updateSize()
 {
     bool changed = false;
     UpdateParams p = mSpec->updateParams;
+    int ow = mSpec->outRect.width();
+    int oh = mSpec->outRect.height();
+    if (ow <= 0)
+        ow = mSpec->srcGeometry.width;
+    if (oh <= 0)
+        oh = mSpec->srcGeometry.height;
+
     int dw = p.outRectStep.width();
-    int dh = p.outRectStep.width();
+    int dh = p.outRectStep.height();
 
     if (dw != 0) {
         mWidth += dw;
         Rect lim = p.outRectLimit;
         if ((dw > 0 && mWidth > lim.width() && lim.width() > 0) ||
                 (dw < 0 && mWidth < 0))
-            mWidth = mSpec->srcGeometry.width;
+            mWidth = ow;
         changed = true;
     }
 
@@ -352,7 +519,7 @@ bool TestBase::updateSize()
         Rect lim = p.outRectLimit;
         if ((dh > 0 && mHeight > lim.height() && lim.height() > 0) ||
                 (dh < 0 && mHeight < 0))
-            mHeight = mSpec->srcGeometry.height;
+            mHeight = oh;
         changed = true;
     }
 
@@ -376,7 +543,7 @@ bool TestBase::threadLoop()
     int visibility;
     bool positionChange, sizeChange;
 
-    for (unsigned int i = 0; i < p.iterations && !exitPending(); i++) {
+    for (long int i = 0; (i < p.iterations || p.iterations < 0) && !exitPending(); i++) {
         if (latency > 0) {
             const nsecs_t sleepTime = latency - ns2us(systemTime() - mLastIter);
             if (sleepTime > 0)
@@ -413,6 +580,11 @@ bool TestBase::threadLoop()
 
             SurfaceComposerClient::closeGlobalTransaction();
             mStat.closeTransaction();
+
+            if (sizeChange && !sizeChanged()) {
+                requestExit();
+                continue;
+            }
         }
 
         if (updateContent(sizeChange)) {

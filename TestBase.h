@@ -7,6 +7,7 @@
 
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#include <ui/DisplayInfo.h>
 #include <ui/GraphicBufferMapper.h>
 
 #include <GLES/gl.h>
@@ -34,8 +35,12 @@ class TestBase : public Thread {
 
     protected:
         virtual void updateContent() = 0;
+        virtual void createSurface();
+        virtual bool sizeChanged();
+        virtual void chooseEGLConfig(EGLDisplay display, EGLConfig *config);
+        virtual EGLContext createEGLContext(EGLDisplay display, EGLConfig config);
+
         void signalExit();
-        void createSurface();
         bool lockNV12(sp<ANativeWindow> window, ANativeWindowBuffer **b, char **y, char **uv);
 
         sp<SurfaceSpec> mSpec;

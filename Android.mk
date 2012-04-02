@@ -9,6 +9,7 @@ LOCAL_SRC_FILES:= \
     SolidThread.cpp \
     SpecParser.cpp \
     Stat.cpp \
+    PluginThread.cpp \
 
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES
 
@@ -21,6 +22,7 @@ LOCAL_SHARED_LIBRARIES := \
     libstlport \
     libGLESv1_CM \
     libEGL \
+    libdl \
 
 LOCAL_C_INCLUDES := \
     bionic \

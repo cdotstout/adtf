@@ -193,6 +193,16 @@ bool FileThread::initTexture(void* p)
     return ret;
 }
 
+bool FileThread::sizeChanged()
+{
+// TODO: Resizing of GL surfaces is not working correctly yet
+//    if (mSpec->renderFlag(RenderFlags::GL))
+//        glViewport(0, 0, mWidth, mHeight);
+
+    return TestBase::sizeChanged();
+}
+
+
 void FileThread::updateContent()
 {
     sp<Surface> s = mSurfaceControl->getSurface();
