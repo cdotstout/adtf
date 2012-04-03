@@ -16,7 +16,6 @@ class FileThread : public TestBase {
 
     protected:
         virtual void updateContent();
-        virtual bool sizeChanged();
 
     private:
         bool initTexture(void* p);

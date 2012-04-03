@@ -193,21 +193,25 @@ bool FileThread::initTexture(void* p)
     return ret;
 }
 
-bool FileThread::sizeChanged()
-{
-// TODO: Resizing of GL surfaces is not working correctly yet
-//    if (mSpec->renderFlag(RenderFlags::GL))
-//        glViewport(0, 0, mWidth, mHeight);
-
-    return TestBase::sizeChanged();
-}
-
-
 void FileThread::updateContent()
 {
     sp<Surface> s = mSurfaceControl->getSurface();
 
     if (mSpec->renderFlag(RenderFlags::GL)) {
+        if (mWidth != mLastWidth || mHeight != mLastHeight) {
+            // Render once with the old dimensions
+            glBindTexture(GL_TEXTURE_2D, mTIds.at(mFrameIndex));
+            glDrawTexiOES(0, 0, 0, mLastWidth, mLastHeight);
+            eglSwapBuffers(mEglDisplay, mEglSurface);
+
+            // Purge buffers
+            if (!TestBase::purgeEglBuffers()) {
+                requestExit();
+                return;
+            }
+
+            glViewport(0, 0, mWidth, mHeight);
+        }
         glBindTexture(GL_TEXTURE_2D, mTIds.at(mFrameIndex));
         glDrawTexiOES(0, 0, 0, mWidth, mHeight);
         eglSwapBuffers(mEglDisplay, mEglSurface);

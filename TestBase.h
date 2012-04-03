@@ -36,7 +36,7 @@ class TestBase : public Thread {
     protected:
         virtual void updateContent() = 0;
         virtual void createSurface();
-        virtual bool sizeChanged();
+        bool purgeEglBuffers();
         virtual void chooseEGLConfig(EGLDisplay display, EGLConfig *config);
         virtual EGLContext createEGLContext(EGLDisplay display, EGLConfig config);
 
@@ -52,6 +52,9 @@ class TestBase : public Thread {
         EGLContext mEglContext;
         int mWidth;
         int mHeight;
+        int mLastWidth;
+        int mLastHeight;
+
 
     private:
         int getVisibility();

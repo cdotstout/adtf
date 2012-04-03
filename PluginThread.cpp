@@ -134,20 +134,35 @@ void PluginThread::updateContent()
 {
     int ret;
 
+    if (mWidth != mLastWidth || mHeight != mLastHeight) {
+        // Render once with the old dimensions
+        if ((ret = mFuncs.render(mData)) != 0) {
+            LOGE("\"%s\" plugin render failed, %d", mSpec->name.c_str(), ret);
+            requestExit();
+            return;
+        }
+        eglSwapBuffers(mEglDisplay, mEglSurface);
+
+        // Purge buffers
+        if (!TestBase::purgeEglBuffers()) {
+            requestExit();
+            return;
+        }
+
+        // Tell plugin that size changed
+        if (mFuncs.sizeChanged) {
+            if ((ret = mFuncs.sizeChanged(mData, mWidth, mHeight) != 0)) {
+                LOGE("\"%s\" plugin render sizeChanged failed, %d", mSpec->name.c_str(), ret);
+                requestExit();
+                return;
+            }
+        }
+    }
+
     if ((ret = mFuncs.render(mData)) != 0) {
         LOGE("\"%s\" plugin render failed, %d", mSpec->name.c_str(), ret);
         requestExit();
         return;
     }
     eglSwapBuffers(mEglDisplay, mEglSurface);
-}
-
-bool PluginThread::sizeChanged()
-{
-    bool ret = true;
-
-    if (mFuncs.sizeChanged)
-        ret = ret && (mFuncs.sizeChanged(mData, mWidth, mHeight) == 0);
-
-    return ret && TestBase::sizeChanged();
 }

@@ -145,6 +145,9 @@ status_t TestBase::readyToRun()
     mVisibleCount = 0;
     mLastIter = systemTime();
 
+    mLastWidth = mWidth;
+    mLastHeight = mHeight;
+
     return NO_ERROR;
 }
 
@@ -238,7 +241,7 @@ void TestBase::createSurface()
     }
 }
 
-bool TestBase::sizeChanged()
+bool TestBase::purgeEglBuffers()
 {
     if (mSpec->renderFlag(RenderFlags::GL)) {
 
@@ -583,7 +586,7 @@ bool TestBase::threadLoop()
             SurfaceComposerClient::openGlobalTransaction();
             mStat.openTransaction();
 
-            if (updatePosition()) {
+            if (positionChange) {
                 mSurfaceControl->setPosition(mLeft, mTop);
                 mStat.setPosition();
             }
@@ -604,17 +607,14 @@ bool TestBase::threadLoop()
 
             SurfaceComposerClient::closeGlobalTransaction();
             mStat.closeTransaction();
-
-            if (sizeChange && !sizeChanged()) {
-                requestExit();
-                continue;
-            }
         }
 
         if (updateContent(sizeChange)) {
             mStat.startUpdate();
             updateContent();
             mStat.doneUpdate();
+            mLastWidth = mWidth;
+            mLastHeight = mHeight;
         }
         if (mStat.sinceClear() >= 1000000) {
             mStat.dump(mSpec->name);

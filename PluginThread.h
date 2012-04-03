@@ -25,7 +25,6 @@ class PluginThread : public TestBase {
 
     protected:
         virtual void updateContent();
-        virtual bool sizeChanged();
         virtual void chooseEGLConfig(EGLDisplay display, EGLConfig *config);
         virtual EGLContext createEGLContext(EGLDisplay display, EGLConfig config);
 
