@@ -14,7 +14,8 @@ TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
     Thread(false), mSpec(spec), mComposerClient(client), mSurfaceControl(0),
     mEglDisplay(0), mEglSurface(0), mEglContext(0),
     mExitLock(exitLock), mExitCondition(exitCondition), mUpdateCount(0),
-    mUpdating(true), mVisibleCount(0), mVisible(false)
+    mUpdating(true), mVisibleCount(0), mVisible(false), mLeftStepFactor(1),
+    mTopStepFactor(1), mWidthStepFactor(1), mHeightStepFactor(1)
 {
     LOGD("\"%s\" thread created", mSpec->name.c_str());
 }
@@ -473,18 +474,30 @@ bool TestBase::updatePosition()
     UpdateParams p = mSpec->updateParams;
 
     if (p.outRectStep.left != 0) {
-        mLeft += p.outRectStep.left;
-        if ((p.outRectStep.left > 0 && mLeft > p.outRectLimit.left) ||
-                (p.outRectStep.left < 0 && mLeft < p.outRectLimit.left))
-            mLeft = mSpec->outRect.left;
+        int minVal = min(mSpec->outRect.left, p.outRectLimit.left);
+        int maxVal = max(mSpec->outRect.left, p.outRectLimit.left);
+
+        mLeft += mLeftStepFactor * p.outRectStep.left;
+        if (mLeft < minVal || mLeft > maxVal) {
+            mLeftStepFactor *= -1;
+            mLeft += 2 * mLeftStepFactor * p.outRectStep.left;
+        }
+        mLeft = min(mLeft, maxVal);
+        mLeft = max(mLeft, minVal);
         changed = true;
     }
 
     if (p.outRectStep.top != 0) {
-        mTop += p.outRectStep.top;
-        if ((p.outRectStep.top > 0 && mTop > p.outRectLimit.top) ||
-                (p.outRectStep.top < 0 && mTop < p.outRectLimit.top))
-            mTop = mSpec->outRect.top;
+        int minVal = min(mSpec->outRect.top, p.outRectLimit.top);
+        int maxVal = max(mSpec->outRect.top, p.outRectLimit.top);
+
+        mTop += mTopStepFactor * p.outRectStep.top;
+        if (mTop < minVal || mTop > maxVal) {
+            mTopStepFactor *= -1;
+            mTop += 2 * mTopStepFactor * p.outRectStep.top;
+        }
+        mTop = min(mTop, maxVal);
+        mTop = max(mTop, minVal);
         changed = true;
     }
 
@@ -495,6 +508,7 @@ bool TestBase::updateSize()
 {
     bool changed = false;
     UpdateParams p = mSpec->updateParams;
+    Rect lim = p.outRectLimit;
     int ow = mSpec->outRect.width();
     int oh = mSpec->outRect.height();
     if (ow <= 0)
@@ -505,21 +519,31 @@ bool TestBase::updateSize()
     int dw = p.outRectStep.width();
     int dh = p.outRectStep.height();
 
-    if (dw != 0) {
-        mWidth += dw;
-        Rect lim = p.outRectLimit;
-        if ((dw > 0 && mWidth > lim.width() && lim.width() > 0) ||
-                (dw < 0 && mWidth < 0))
-            mWidth = ow;
+    if (dw != 0 && lim.width() > 0) {
+        int minVal = min(ow, lim.width());
+        int maxVal = max(ow, lim.width());
+
+        mWidth += mWidthStepFactor * dw;
+        if (mWidth < minVal || mWidth > maxVal) {
+            mWidthStepFactor *= -1;
+            mWidth += 2 * mWidthStepFactor * dw;
+        }
+        mWidth = min(mWidth, maxVal);
+        mWidth = max(mWidth, minVal);
         changed = true;
     }
 
-    if (dh != 0) {
-        mHeight += dh;
-        Rect lim = p.outRectLimit;
-        if ((dh > 0 && mHeight > lim.height() && lim.height() > 0) ||
-                (dh < 0 && mHeight < 0))
-            mHeight = oh;
+    if (dh != 0 && lim.height() > 0) {
+        int minVal = min(oh, lim.height());
+        int maxVal = max(oh, lim.height());
+
+        mHeight += mHeightStepFactor * dw;
+        if (mHeight < minVal || mHeight > maxVal) {
+            mHeightStepFactor *= -1;
+            mHeight += 2 * mHeightStepFactor * dw;
+        }
+        mHeight = min(mHeight, maxVal);
+        mHeight = max(mHeight, minVal);
         changed = true;
     }
 

@@ -70,6 +70,11 @@ class TestBase : public Thread {
 
         int mLeft;
         int mTop;
+        int mLeftStepFactor;
+        int mTopStepFactor;
+        int mWidthStepFactor;
+        int mHeightStepFactor;
+
         nsecs_t mLastIter;
         Stat mStat;
 };
