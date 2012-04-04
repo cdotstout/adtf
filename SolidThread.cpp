@@ -52,6 +52,13 @@ status_t SolidThread::readyToRun()
     LOGD("\"%s\" got %d colors, bytes per pixel %d, gl %d",
             mSpec->name.c_str(), mColors.size(), mBpp, mSpec->renderFlag(RenderFlags::GL));
 
+    createSurface();
+    if (mSurfaceControl == 0 || done()) {
+        LOGE("\"%s\" failed to create surface", mSpec->name.c_str());
+        signalExit();
+        return UNKNOWN_ERROR;
+    }
+
     return TestBase::readyToRun();
 }
 

@@ -56,11 +56,15 @@ status_t TestBase::readyToRun()
         return status;
     }
 
-    createSurface();
-
     if (mSurfaceControl == 0) {
         status = UNKNOWN_ERROR;
-        LOGE("\"%s\" failed to create surface", mSpec->name.c_str());
+        LOGE("\"%s\" subclass failed to create surface", mSpec->name.c_str());
+        signalExit();
+        return status;
+    }
+
+    if (done()) {
+        status = UNKNOWN_ERROR;
         signalExit();
         return status;
     }
@@ -134,7 +138,9 @@ status_t TestBase::readyToRun()
     mStat.closeTransaction();
 
     mStat.startUpdate();
-    if (!updateContent(true) || done()) {
+    updateContent(true); // Resets update duty cycle
+    updateContent(); // Always perform at least one update
+    if (done()) {
         status = UNKNOWN_ERROR;
         LOGE("\"%s\" failed to update content", mSpec->name.c_str());
         signalExit();
@@ -165,8 +171,11 @@ void TestBase::createSurface()
     if (h <= 0)
         h = mSpec->srcGeometry.height;
 
-    if (w <= 0 || h <= 0)
+    if (w <= 0 || h <= 0) {
         LOGE("\"%s\" invalid source geometry %dx%d", mSpec->name.c_str(), w, h);
+        signalExit();
+        return;
+    }
 
     mSurfaceControl = mComposerClient->createSurface(
             String8(mSpec->name.c_str()),
@@ -188,7 +197,8 @@ void TestBase::createSurface()
     chooseEGLConfig(mEglDisplay, &config);
     if (config == NULL) {
         LOGE("\"%s\" chooseEGLConfig failed", mSpec->name.c_str());
-        return; // TODO: return false to signal error
+        signalExit();
+        return;
     }
 
     // 33 attributes used for debugging
@@ -239,6 +249,7 @@ void TestBase::createSurface()
 
     if (eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext) == EGL_FALSE) {
         LOGE("\"%s\" eglMakeCurrent failed", mSpec->name.c_str());
+        signalExit();
     }
 }
 

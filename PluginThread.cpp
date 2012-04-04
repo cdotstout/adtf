@@ -28,7 +28,6 @@ PluginThread::~PluginThread()
 
 status_t PluginThread::readyToRun()
 {
-    status_t status = NO_ERROR;
     const char *error;
     string lib;
     stringstream ss(stringstream::in | stringstream::out);
@@ -97,17 +96,22 @@ status_t PluginThread::readyToRun()
 
     LOGD("\"%s\" plugin functions loaded", mSpec->name.c_str());
 
-    status = TestBase::readyToRun();
-    if (status == NO_ERROR) {
-        LOGD("\"%s\" calling plugin init", mSpec->name.c_str());
-        int ret;
-        if ((ret = mFuncs.init(mWidth, mHeight, &mData)) != 0) {
-            LOGE("\"%s\" plugin init failed, %d", mSpec->name.c_str(), ret);
-            status = UNKNOWN_ERROR;
-        }
+    createSurface();
+    if (mSurfaceControl == 0 || done()) {
+        LOGE("\"%s\" failed to create surface", mSpec->name.c_str());
+        signalExit();
+        return UNKNOWN_ERROR;
     }
 
-    return status;
+    LOGD("\"%s\" calling plugin init", mSpec->name.c_str());
+    int ret;
+    if ((ret = mFuncs.init(mWidth, mHeight, &mData)) != 0) {
+        LOGE("\"%s\" plugin init failed, %d", mSpec->name.c_str(), ret);
+        signalExit();
+        return UNKNOWN_ERROR;
+    }
+
+    return TestBase::readyToRun();
 }
 
 void PluginThread::chooseEGLConfig(EGLDisplay display, EGLConfig *config)

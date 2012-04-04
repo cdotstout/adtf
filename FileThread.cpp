@@ -64,8 +64,7 @@ status_t FileThread::readyToRun()
     }
 
     createSurface();
-
-    if (mSurfaceControl == 0) {
+    if (mSurfaceControl == 0 || done()) {
         LOGE("\"%s\" failed to create surface", mSpec->name.c_str());
         signalExit();
         return UNKNOWN_ERROR;
