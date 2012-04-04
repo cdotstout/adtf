@@ -211,7 +211,6 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
             if (spec != 0)
                 specs.push_back(spec);
             spec = sp<SurfaceSpec>(new SurfaceSpec());
-            spec->renderFlags = 0;
             continue;
         }
 
@@ -286,23 +285,42 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
             ss >> spec->updateParams.iterations;
         } else if (prop == "update_latency") {
             ss >> spec->updateParams.latency;
-        } else if (prop == "update_content_on") {
-            ss >> spec->updateParams.contentUpdateCycle.onCount;
-        } else if (prop == "update_content_off") {
-            ss >> spec->updateParams.contentUpdateCycle.offCount;
         } else if (prop == "update_output_step") {
             spec->updateParams.outRectStep = parseRect(ss, filename, n, prop, true);
             continue;
         } else if (prop == "update_output_limit") {
             spec->updateParams.outRectLimit = parseRect(ss, filename, n, prop, true);
-        } else if (prop == "update_content_show_on") {
-            ss >> spec->updateParams.showCycle.onCount;
-        } else if (prop == "update_content_show_off") {
-            ss >> spec->updateParams.showCycle.offCount;
+        } else if (prop == "update_content" || prop == "update_content_show" ||
+                   prop == "update_content_position" || prop == "update_content_size") {
+            DutyCycle *dc = NULL;
+            if (prop == "update_content")
+                dc = &spec->updateParams.contentUpdateCycle;
+            else if (prop == "update_content_show")
+                dc = &spec->updateParams.showCycle;
+            else if (prop == "update_content_position")
+                dc = &spec->updateParams.positionCycle;
+            else if (prop == "update_content_size")
+                dc = &spec->updateParams.sizeCycle;
+            else
+                continue; // Shouldn't happen
+            dc->onCount = 1; dc->offCount = 0; // Default to every iteration
+            ss >> dc->onCount >> dc->offCount;
         } else if (prop == "flags") {
             ss >> spec->flags;
         } else {
-            LOGW("'%s' ignored line '%s'", filename.c_str(), line.c_str());
+
+            // Check for deprecated properties
+            if (prop == "update_content_on") {
+                ss >> spec->updateParams.contentUpdateCycle.onCount;
+            } else if (prop == "update_content_off") {
+                ss >> spec->updateParams.contentUpdateCycle.offCount;
+            } else if (prop == "update_content_show_on") {
+                ss >> spec->updateParams.showCycle.onCount;
+            } else if (prop == "update_content_show_off") {
+                ss >> spec->updateParams.showCycle.offCount;
+            } else {
+                LOGW("'%s' ignored line '%s'", filename.c_str(), line.c_str());
+            }
         }
 
         // Common error check for simple parameters

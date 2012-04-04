@@ -14,7 +14,8 @@ TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
     Thread(false), mSpec(spec), mComposerClient(client), mSurfaceControl(0),
     mEglDisplay(0), mEglSurface(0), mEglContext(0),
     mExitLock(exitLock), mExitCondition(exitCondition), mUpdateCount(0),
-    mUpdating(true), mVisibleCount(0), mVisible(false), mLeftStepFactor(1),
+    mUpdating(true), mVisibleCount(0), mVisible(false), mPosCount(0),
+    mSteppingPos(true), mSizeCount(0), mSteppingSize(true), mLeftStepFactor(1),
     mTopStepFactor(1), mWidthStepFactor(1), mHeightStepFactor(1)
 {
     LOGD("\"%s\" thread created", mSpec->name.c_str());
@@ -474,7 +475,31 @@ int TestBase::getVisibility()
 bool TestBase::updatePosition()
 {
     bool changed = false;
+    bool doStep = false;
     UpdateParams p = mSpec->updateParams;
+
+    // Never update
+    if (p.positionCycle.onCount == 0)
+        return false;
+
+    // Always update
+    if (p.positionCycle.offCount == 0)
+        mSteppingPos = true;
+
+    mPosCount++;
+
+    if (mSteppingPos) {
+        doStep = true;
+        mSteppingPos = mPosCount < p.positionCycle.onCount;
+        mPosCount = mSteppingPos ? mPosCount : 0;
+    } else if (mPosCount >= p.positionCycle.offCount) {
+        // Last iteration in off cycle, next is first in on cycle
+        mSteppingPos = true;
+        mPosCount = 0;
+    }
+
+    if (!doStep)
+        return false;
 
     if (p.outRectStep.left != 0) {
         int minVal = min(mSpec->outRect.left, p.outRectLimit.left);
@@ -510,6 +535,7 @@ bool TestBase::updatePosition()
 bool TestBase::updateSize()
 {
     bool changed = false;
+    bool doStep = false;
     UpdateParams p = mSpec->updateParams;
     Rect lim = p.outRectLimit;
     int ow = mSpec->outRect.width();
@@ -521,6 +547,29 @@ bool TestBase::updateSize()
 
     int dw = p.outRectStep.width();
     int dh = p.outRectStep.height();
+
+    // Never update
+    if (p.sizeCycle.onCount == 0)
+        return false;
+
+    // Always update
+    if (p.sizeCycle.offCount == 0)
+        mSteppingSize = true;
+
+    mSizeCount++;
+
+    if (mSteppingSize) {
+        doStep = true;
+        mSteppingSize = mSizeCount < p.sizeCycle.onCount;
+        mSizeCount = mSteppingSize ? mSizeCount : 0;
+    } else if (mSizeCount >= p.sizeCycle.offCount) {
+        // Last iteration in off cycle, next is first in on cycle
+        mSteppingSize = true;
+        mSizeCount = 0;
+    }
+
+    if (!doStep)
+        return false;
 
     if (dw != 0 && lim.width() > 0) {
         int minVal = min(ow, lim.width());

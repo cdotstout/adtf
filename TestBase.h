@@ -70,6 +70,10 @@ class TestBase : public Thread {
         bool mUpdating;
         unsigned int mVisibleCount;
         bool mVisible;
+        unsigned int mPosCount;
+        bool mSteppingPos;
+        unsigned int mSizeCount;
+        bool mSteppingSize;
 
         int mLeft;
         int mTop;
