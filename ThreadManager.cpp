@@ -40,7 +40,7 @@ bool ThreadManager::threadLoop()
 
     for (List<sp<TestBase> >::iterator it = mThreads.begin(); it != mThreads.end(); ++it) {
         sp<TestBase> thread = *it;
-        status_t status = thread->run();
+        thread->run();
     }
 
     while (mThreads.size() > 0) {
@@ -49,8 +49,11 @@ bool ThreadManager::threadLoop()
         for (List<sp<TestBase> >::iterator it = mThreads.begin(); it != mThreads.end(); ++it) {
             sp<TestBase> thread = *it;
             if (thread->done()) {
-                it = mThreads.erase(it); // TODO: Put thread in separate list to keep instance alive (final surface showing until all is done)
+                mThreads.erase(it);
+                mLock.unlock();
                 thread->join();
+                mLock.lock();
+                it = mThreads.begin();
                 LOGD("\"%s\" thread exited, keepAlive %d",
                         thread->getSpec()->name.c_str(),
                         thread->getSpec()->renderFlag(RenderFlags::KEEPALIVE));
