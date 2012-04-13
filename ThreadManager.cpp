@@ -46,7 +46,8 @@ bool ThreadManager::threadLoop()
     while (mThreads.size() > 0) {
         LOGD("waiting for %i threads", mThreads.size());
         mCondition.wait(mLock);
-        for (List<sp<TestBase> >::iterator it = mThreads.begin(); it != mThreads.end(); ++it) {
+        List<sp<TestBase> >::iterator it = mThreads.begin();
+        while (it != mThreads.end()) {
             sp<TestBase> thread = *it;
             if (thread->done()) {
                 mThreads.erase(it);
@@ -59,6 +60,8 @@ bool ThreadManager::threadLoop()
                         thread->getSpec()->renderFlag(RenderFlags::KEEPALIVE));
                 if (thread->getSpec()->renderFlag(RenderFlags::KEEPALIVE))
                     mGhosts.push_back(thread);
+            } else {
+                ++it;
             }
         }
     }
