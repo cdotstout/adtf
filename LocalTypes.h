@@ -4,6 +4,7 @@
 #include <ui/PixelFormat.h>
 #include <ui/Rect.h>
 #include <utils/RefBase.h>
+#include <utils/List.h>
 #include <string>
 
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
@@ -14,7 +15,7 @@ namespace ContentType {
 
 namespace RenderFlags {
     enum Enum {
-        KEEPALIVE      = 1 << 0,
+        KEEPALIVE       = 1 << 0,
         GL              = 1 << 1,
         ASYNC           = 1 << 2
     };
@@ -56,6 +57,7 @@ class SurfaceSpec : public android::RefBase {
         int transform;
         SrcGeometry srcGeometry;
         android::Rect outRect;
+        android::List<android::Rect> transparentRegionHint;
         ContentType::Enum contentType;
         std::string content;
         UpdateParams updateParams;

@@ -128,6 +128,25 @@ status_t TestBase::readyToRun()
     SurfaceComposerClient::openGlobalTransaction();
     mStat.openTransaction();
 
+    if (mSpec->transparentRegionHint.size() > 0) {
+        Region r;
+        String8 str;
+
+        r.set(mWidth, mHeight);
+        for (List<Rect>::iterator it = mSpec->transparentRegionHint.begin();
+                it != mSpec->transparentRegionHint.end(); ++it)
+            r.addRectUnchecked((*it).left, (*it).top, (*it).right, (*it).bottom);
+
+        r.dump(str, "transparentRegion", 0);
+        LOGD("\"%s\" %s", mSpec->name.c_str(), str.string());
+        status |= mSurfaceControl->setTransparentRegionHint(r);
+        if (status != 0) {
+            LOGE("\"%s\" setTransparentRegionHint failed", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
+    }
+
     mSurfaceControl->setLayer(mSpec->zOrder);
     mLeft = mSpec->outRect.left;
     mTop = mSpec->outRect.top;

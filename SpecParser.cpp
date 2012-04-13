@@ -259,6 +259,10 @@ bool SpecParser::parseFile(string filename, List<sp<SurfaceSpec> >& specs)
         } else if (prop == "output") {
             spec->outRect = parseRect(ss, filename, n, prop, false);
             continue;
+        } else if (prop == "transparent_hint") {
+            Rect rect = parseRect(ss, filename, n, prop, false);
+            spec->transparentRegionHint.push_back(rect);
+            continue;
         } else if (prop == "contenttype") {
             string t;
             ss >> t;
