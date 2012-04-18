@@ -107,7 +107,7 @@ void SolidThread::updateContent()
 
         size_t len = b->stride * b->height;
         memset(y, b0, len);
-        memset(uv, b1, len / 2);
+        memset(uv, b1, len / 2 - b->stride + b->width);
 
         mapper.unlock(b->handle);
         window.get()->queueBuffer(window.get(), b);
