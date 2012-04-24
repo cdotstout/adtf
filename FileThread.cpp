@@ -128,8 +128,15 @@ status_t FileThread::readyToRun()
     }
 
     if ((mLength % mFrameSize != 0)) {
-        LOGE("\"%s\" '%s' doesn't contain an integer number of frames",
-                mSpec->name.c_str(), fileName.c_str());
+        if (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_NV12) {
+            LOGE("\"%s\" '%s' doesn't contain an integer number of frames (%dx%dx3/2=%d, file %d)",
+                mSpec->name.c_str(), fileName.c_str(), mSpec->srcGeometry.stride,
+                        mSpec->srcGeometry.height, mFrameSize, mLength);
+        } else {
+            LOGE("\"%s\" '%s' doesn't contain an integer number of frames (%dx%dx%d=%d, file %d)",
+                mSpec->name.c_str(), fileName.c_str(), mSpec->srcGeometry.stride,
+                        mSpec->srcGeometry.height, mBpp, mFrameSize, mLength);
+        }
         signalExit();
         return UNKNOWN_ERROR;
     }
