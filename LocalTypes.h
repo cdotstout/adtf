@@ -49,7 +49,8 @@ namespace RenderFlags {
     enum Enum {
         KEEPALIVE       = 1 << 0,
         GL              = 1 << 1,
-        ASYNC           = 1 << 2
+        ASYNC           = 1 << 2,
+        SILENT          = 1 << 3
     };
 };
 

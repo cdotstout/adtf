@@ -728,7 +728,8 @@ bool TestBase::threadLoop()
             mLastHeight = mHeight;
         }
         if (mStat.sinceClear() >= 1000000) {
-            mStat.dump(mSpec->name);
+            if (!mSpec->renderFlag(RenderFlags::SILENT))
+                mStat.dump(mSpec->name);
             mStat.clear();
         }
     }

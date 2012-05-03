@@ -170,6 +170,8 @@ inline int parseRenderFlags(stringstream& ss, string line, string filename,
                 v = RenderFlags::GL;
             else if (sv == "ASYNC" || sv == "async")
                 v = RenderFlags::ASYNC;
+            else if (sv == "SILENT" || sv == "silent")
+                v = RenderFlags::SILENT;
             else
                 LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), sv.c_str());
         }
