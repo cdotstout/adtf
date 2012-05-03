@@ -102,6 +102,13 @@ status_t FileThread::readyToRun()
         return UNKNOWN_ERROR;
     }
 
+    TestBase::initEgl();
+    if (done()) {
+        LOGE("\"%s\" initEgl failed", mSpec->name.c_str());
+        signalExit();
+        return UNKNOWN_ERROR;
+    }
+
     // Find out how many frames the file contains. This relies on src geometry
     // and pixel format. If actual file size is not a multiple of one frame size
     // we'll bail out to avoid crashing and burning.

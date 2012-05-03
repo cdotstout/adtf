@@ -33,6 +33,7 @@
 #define LOG_TAG "adtf"
 
 #include <sstream>
+#include <vector>
 #include <dlfcn.h>
 
 #include "PluginThread.h"
@@ -52,8 +53,10 @@ PluginThread::PluginThread(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> clien
 PluginThread::~PluginThread()
 {
     if (mHandle) {
-        if (mFuncs.deinit)
-            mFuncs.deinit(mData);
+        if (mFuncs.destroy) {
+            LOGD("\"%s\" calling plugin destroy", mSpec->name.c_str());
+            mFuncs.destroy(mData);
+        }
         dlclose(mHandle);
     }
 }
@@ -62,9 +65,25 @@ status_t PluginThread::readyToRun()
 {
     const char *error;
     string lib;
+    string param;
+    vector<string> params;
+
     stringstream ss(stringstream::in | stringstream::out);
     ss.str(mSpec->content);
     ss >> lib;
+
+    // This parameter extraction does NOT support quotations or other fancy stuff
+    params.push_back(lib); // argv[0]
+    ss >> param;
+    while (!ss.fail()) {
+        params.push_back(param); // argv[i]
+        ss >> param;
+    }
+    int argc = params.size();
+    char *argv[argc + 1];
+    for (int i = 0; i < argc; i++)
+        argv[i] = (char*)params[i].c_str();
+    argv[argc] = 0;
 
     LOGD("\"%s\" dlopen '%s'", mSpec->name.c_str(), lib.c_str());
 
@@ -75,12 +94,12 @@ status_t PluginThread::readyToRun()
         return UNKNOWN_ERROR;
     }
 
-    // Need init and render, the rest are optional
+    // Need create and render, the rest are optional
     dlerror();
-    mFuncs.init = (int (*)(int, int, void**))dlsym(mHandle, "init");
-    if ((error = dlerror()) != NULL || mFuncs.init == NULL)  {
+    mFuncs.create = (int (*)(int, int, int, char**, void**))dlsym(mHandle, "create");
+    if ((error = dlerror()) != NULL || mFuncs.create == NULL)  {
         error = error ? error : "not set: ";
-        LOGE("\"%s\" '%s' %sinit", mSpec->name.c_str(), lib.c_str(), error);
+        LOGE("\"%s\" '%s' %screate", mSpec->name.c_str(), lib.c_str(), error);
         signalExit();
         return UNKNOWN_ERROR;
     }
@@ -95,15 +114,23 @@ status_t PluginThread::readyToRun()
     }
 
     dlerror();
-    mFuncs.deinit = (void (*)(void*))dlsym(mHandle, "deinit");
-    if ((error = dlerror()) != NULL || mFuncs.deinit == NULL)  {
+    mFuncs.init = (int (*)(void*))dlsym(mHandle, "init");
+    if ((error = dlerror()) != NULL || mFuncs.init == NULL)  {
         error = error ? error : "not set: ";
-        LOGI("\"%s\" '%s' %sdeinit", mSpec->name.c_str(), lib.c_str(), error);
+        LOGI("\"%s\" '%s' %sinit", mSpec->name.c_str(), lib.c_str(), error);
+        mFuncs.init = NULL;
+    }
+
+    dlerror();
+    mFuncs.destroy = (void (*)(void*))dlsym(mHandle, "destroy");
+    if ((error = dlerror()) != NULL || mFuncs.destroy == NULL)  {
+        error = error ? error : "not set: ";
+        LOGI("\"%s\" '%s' %sdestroy", mSpec->name.c_str(), lib.c_str(), error);
         mFuncs.chooseEGLConfig = NULL;
     }
 
     dlerror();
-    mFuncs.chooseEGLConfig = (int (*)(EGLDisplay, EGLConfig*))dlsym(mHandle, "chooseEGLConfig");
+    mFuncs.chooseEGLConfig = (int (*)(void*, EGLDisplay, EGLConfig*))dlsym(mHandle, "chooseEGLConfig");
     if ((error = dlerror()) != NULL || mFuncs.chooseEGLConfig == NULL)  {
         error = error ? error : "not set: ";
         LOGI("\"%s\" '%s' %schooseEGLConfig", mSpec->name.c_str(), lib.c_str(), error);
@@ -111,7 +138,7 @@ status_t PluginThread::readyToRun()
     }
 
     dlerror();
-    mFuncs.createEGLContext = (EGLContext (*)(EGLDisplay, EGLConfig))dlsym(mHandle, "createEGLContext");
+    mFuncs.createEGLContext = (EGLContext (*)(void*, EGLDisplay, EGLConfig))dlsym(mHandle, "createEGLContext");
     if ((error = dlerror()) != NULL || mFuncs.createEGLContext == NULL)  {
         error = error ? error : "not set: ";
         LOGI("\"%s\" '%s' %screateEGLContext", mSpec->name.c_str(), lib.c_str(), error);
@@ -126,8 +153,6 @@ status_t PluginThread::readyToRun()
         mFuncs.sizeChanged = NULL;
     }
 
-    LOGD("\"%s\" plugin functions loaded", mSpec->name.c_str());
-
     createSurface();
     if (mSurfaceControl == 0 || done()) {
         LOGE("\"%s\" failed to create surface", mSpec->name.c_str());
@@ -135,12 +160,29 @@ status_t PluginThread::readyToRun()
         return UNKNOWN_ERROR;
     }
 
-    LOGD("\"%s\" calling plugin init", mSpec->name.c_str());
+    LOGD("\"%s\" plugin functions loaded, calling create", mSpec->name.c_str());
+
     int ret;
-    if ((ret = mFuncs.init(mWidth, mHeight, &mData)) != 0) {
-        LOGE("\"%s\" plugin init failed, %d", mSpec->name.c_str(), ret);
+    if ((ret = mFuncs.create(mWidth, mHeight, argc, argv, &mData)) != 0) {
+        LOGE("\"%s\" plugin create failed, %d", mSpec->name.c_str(), ret);
         signalExit();
         return UNKNOWN_ERROR;
+    }
+
+    TestBase::initEgl();
+    if (done()) {
+        LOGE("\"%s\" initEgl failed", mSpec->name.c_str());
+        signalExit();
+        return UNKNOWN_ERROR;
+    }
+
+    if (mFuncs.init) {
+        LOGD("\"%s\" calling plugin init", mSpec->name.c_str());
+        if ((ret = mFuncs.init(mData)) != 0) {
+            LOGE("\"%s\" plugin init failed, %d", mSpec->name.c_str(), ret);
+            signalExit();
+            return UNKNOWN_ERROR;
+        }
     }
 
     return TestBase::readyToRun();
@@ -149,9 +191,9 @@ status_t PluginThread::readyToRun()
 void PluginThread::chooseEGLConfig(EGLDisplay display, EGLConfig *config)
 {
     if (mFuncs.chooseEGLConfig) {
-        mFuncs.chooseEGLConfig(display, config);
+        mFuncs.chooseEGLConfig(mData, display, config);
         if (*config == NULL) {
-            LOGE("\"%s\" plugin chooseEGLConfig malfunction, using default", mSpec->name.c_str());
+            LOGI("\"%s\" plugin chooseEGLConfig returned NULL, using default", mSpec->name.c_str());
             TestBase::chooseEGLConfig(display, config);
         }
     } else
@@ -160,24 +202,79 @@ void PluginThread::chooseEGLConfig(EGLDisplay display, EGLConfig *config)
 
 EGLContext PluginThread::createEGLContext(EGLDisplay display, EGLConfig config)
 {
-    if (mFuncs.createEGLContext)
-        return mFuncs.createEGLContext(display, config);
+    EGLContext res = NULL;
+    if (mFuncs.createEGLContext) {
+        res = mFuncs.createEGLContext(mData, display, config);
+        if (res == NULL)
+            LOGI("\"%s\" plugin createEGLContext returned NULL, using default", mSpec->name.c_str());
+    }
 
-    return TestBase::createEGLContext(display, config);
+    if (res == NULL)
+        res = TestBase::createEGLContext(display, config);
+
+    return res;
+}
+
+// If this function returns false caller must abort
+bool PluginThread::pluginRender(bool& swap)
+{
+    swap = true;
+    int ret = mFuncs.render(mData);
+
+    // 0 : All is well, carry on
+    if (ret == 0)
+        return true;
+
+    // 1: Request for reinit
+    if (ret == 1) {
+        LOGD("\"%s\" plugin render requested reinit %d", mSpec->name.c_str(), ret);
+
+        // Do reinit
+        TestBase::freeEgl();
+        TestBase::initEgl();
+        // Call render again with the new config
+        ret = mFuncs.render(mData);
+
+        // Fall through. Another reinit request is intentionally not handled.
+    }
+
+    // 2: Abort, nothing more to do (not an error)
+    if (ret == 2) {
+        LOGD("\"%s\" plugin render says it's done", mSpec->name.c_str());
+        return false;
+    }
+
+    // 3: OK, but skip swap
+    if (ret == 3) {
+        swap = false;
+        return true;
+    }
+
+    // Generic cases. Positive == warning, negative == error
+    if (ret == 0)
+        return true;
+    else if (ret > 0) {
+        LOGW("\"%s\" plugin render unknown result %d", mSpec->name.c_str(), ret);
+        return true;
+    } else {
+        LOGE("\"%s\" plugin render returned %d", mSpec->name.c_str(), ret);
+        requestExit();
+        return false;
+    }
 }
 
 void PluginThread::updateContent()
 {
-    int ret;
+    bool swap = true;
 
     if (mWidth != mLastWidth || mHeight != mLastHeight) {
         // Render once with the old dimensions
-        if ((ret = mFuncs.render(mData)) != 0) {
-            LOGE("\"%s\" plugin render failed, %d", mSpec->name.c_str(), ret);
+        if (!pluginRender(swap)) {
             requestExit();
             return;
         }
-        eglSwapBuffers(mEglDisplay, mEglSurface);
+        if (swap)
+            eglSwapBuffers(mEglDisplay, mEglSurface);
 
         // Purge buffers
         if (!TestBase::purgeEglBuffers()) {
@@ -187,6 +284,9 @@ void PluginThread::updateContent()
 
         // Tell plugin that size changed
         if (mFuncs.sizeChanged) {
+            LOGD("\"%s\" %dx%d --> %dx%d, telling plugin", mSpec->name.c_str(),
+                    mLastWidth, mLastHeight, mWidth, mHeight);
+            int ret;
             if ((ret = mFuncs.sizeChanged(mData, mWidth, mHeight) != 0)) {
                 LOGE("\"%s\" plugin render sizeChanged failed, %d", mSpec->name.c_str(), ret);
                 requestExit();
@@ -195,10 +295,10 @@ void PluginThread::updateContent()
         }
     }
 
-    if ((ret = mFuncs.render(mData)) != 0) {
-        LOGE("\"%s\" plugin render failed, %d", mSpec->name.c_str(), ret);
+    if (!pluginRender(swap)) {
         requestExit();
         return;
     }
-    eglSwapBuffers(mEglDisplay, mEglSurface);
+    if (swap)
+       eglSwapBuffers(mEglDisplay, mEglSurface);
 }

@@ -44,7 +44,7 @@ using namespace android;
 TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
         Mutex &exitLock, Condition &exitCondition) :
     Thread(false), mSpec(spec), mComposerClient(client), mSurfaceControl(0),
-    mEglDisplay(0), mEglSurface(0), mEglContext(0),
+    mEglDisplay(EGL_NO_DISPLAY), mEglSurface(0), mEglContext(0),
     mExitLock(exitLock), mExitCondition(exitCondition), mUpdateCount(0),
     mUpdating(true), mVisibleCount(0), mVisible(false), mPosCount(0),
     mSteppingPos(true), mSizeCount(0), mSteppingSize(true), mLeftStepFactor(1),
@@ -55,14 +55,7 @@ TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
 
 TestBase::~TestBase()
 {
-    if (mEglDisplay != 0) {
-        if (mEglSurface != 0) {
-            eglMakeCurrent(mEglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-            eglDestroySurface(mEglDisplay, mEglSurface);
-        }
-        if (mEglContext != 0)
-            eglDestroyContext(mEglDisplay, mEglContext);
-    }
+    freeEgl();
 
     LOGD("\"%s\" thread going away", mSpec->name.c_str());
 }
@@ -188,6 +181,9 @@ status_t TestBase::readyToRun()
     SurfaceComposerClient::closeGlobalTransaction();
     mStat.closeTransaction();
 
+    mLastWidth = mWidth;
+    mLastHeight = mHeight;
+
     mStat.startUpdate();
     updateContent(true); // Resets update duty cycle
     updateContent(); // Always perform at least one update
@@ -202,9 +198,6 @@ status_t TestBase::readyToRun()
     mVisible = (mSpec->flags & ISurfaceComposer::eHidden) == 0;
     mVisibleCount = 0;
     mLastIter = systemTime();
-
-    mLastWidth = mWidth;
-    mLastHeight = mHeight;
 
     return NO_ERROR;
 }
@@ -238,7 +231,10 @@ void TestBase::createSurface()
     );
     mWidth = w;
     mHeight = h;
+}
 
+void TestBase::initEgl()
+{
     if (!mSpec->renderFlag(RenderFlags::GL))
         return;
 
@@ -297,6 +293,11 @@ void TestBase::createSurface()
     mEglSurface = eglCreateWindowSurface(mEglDisplay, config,
             mSurfaceControl->getSurface().get(), NULL);
     mEglContext = createEGLContext(mEglDisplay, config);
+    if (mEglContext == 0) {
+        LOGE("\"%s\" createEGLContext failed", mSpec->name.c_str());
+        signalExit();
+        return;
+    }
 
     if (eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext) == EGL_FALSE) {
         LOGE("\"%s\" eglMakeCurrent failed", mSpec->name.c_str());
@@ -322,6 +323,24 @@ bool TestBase::purgeEglBuffers()
     }
 
     return true;
+}
+
+void TestBase::freeEgl()
+{
+    if (mEglDisplay == EGL_NO_DISPLAY)
+        return;
+
+    if (mEglSurface != 0) {
+        eglMakeCurrent(mEglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        eglDestroySurface(mEglDisplay, mEglSurface);
+        mEglSurface = 0;
+    }
+    if (mEglContext != 0) {
+        eglDestroyContext(mEglDisplay, mEglContext);
+        mEglContext = 0;
+    }
+    eglTerminate(mEglDisplay);
+    mEglDisplay = EGL_NO_DISPLAY;
 }
 
 // Unless overridden, choose config matching surface format, GLES 1

@@ -68,7 +68,9 @@ class TestBase : public Thread {
     protected:
         virtual void updateContent() = 0;
         virtual void createSurface();
+        void initEgl();
         bool purgeEglBuffers();
+        void freeEgl();
         virtual void chooseEGLConfig(EGLDisplay display, EGLConfig *config);
         virtual EGLContext createEGLContext(EGLDisplay display, EGLConfig config);
 

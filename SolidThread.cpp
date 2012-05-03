@@ -91,6 +91,13 @@ status_t SolidThread::readyToRun()
         return UNKNOWN_ERROR;
     }
 
+    TestBase::initEgl();
+    if (done()) {
+        LOGE("\"%s\" initEgl failed", mSpec->name.c_str());
+        signalExit();
+        return UNKNOWN_ERROR;
+    }
+
     return TestBase::readyToRun();
 }
 

@@ -45,7 +45,7 @@
 #include "ThreadManager.h"
 #include "SpecParser.h"
 
-#define VERSION "0.1.1"
+#define VERSION "0.1.2"
 
 using namespace android;
 using namespace std;

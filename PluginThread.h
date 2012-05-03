@@ -41,12 +41,13 @@ using namespace android;
 class PluginThread : public TestBase {
 
     struct PluginFuncs {    
-        int (*init)(int, int, void**);
-        void (*deinit)(void*);
-        int (*chooseEGLConfig)(EGLDisplay, EGLConfig*);
-        EGLContext (*createEGLContext)(EGLDisplay, EGLConfig);
+        int (*create)(int, int, int, char**, void**);
+        int (*chooseEGLConfig)(void*, EGLDisplay, EGLConfig*);
+        EGLContext (*createEGLContext)(void*, EGLDisplay, EGLConfig);
+        int (*init)(void*);
         int (*render)(void*);
         int (*sizeChanged)(void*, int, int);
+        void (*destroy)(void*);
     };
 
     public:
@@ -61,6 +62,7 @@ class PluginThread : public TestBase {
         virtual EGLContext createEGLContext(EGLDisplay display, EGLConfig config);
 
     private:
+        bool pluginRender(bool& swap);
         void *mHandle;
         void *mData;
         PluginFuncs mFuncs;
