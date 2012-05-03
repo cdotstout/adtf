@@ -59,7 +59,7 @@ class TestBase : public Thread {
     public:
         TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
                 Mutex &exitLock, Condition &exitCondition);
-         ~TestBase();
+        virtual ~TestBase();
 
         sp<SurfaceSpec> getSpec();
         bool done();
