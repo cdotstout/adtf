@@ -271,25 +271,17 @@ void FileThread::updateContent()
             return;
         }
 
-        if (b->stride == mSpec->srcGeometry.stride &&
-                b->height == mSpec->srcGeometry.height) {
-            char *src = mData + mFrameIndex * b->stride * b->height * 3 / 2;
-            int len = b->stride * b->height;
-            memcpy(y, src, len);
-            memcpy(uv, src + len, len / 2);
-        } else {
-            // Copy line by line
-            unsigned int sl = mSpec->srcGeometry.stride, dl = b->stride;
-            unsigned int h = min(mSpec->srcGeometry.height, b->height);
-            char *src = mData + mFrameIndex * sl * mSpec->srcGeometry.height * 3 / 2;
-            char *dst = y;
-            unsigned int b = min(sl, dl);
-            for (unsigned int i = 0; i < h; i++, dst += dl, src += sl)
-                memcpy(dst, src, b);
-            dst = uv;
-            for (unsigned int i = 0; i < h / 2; i++, dst += dl, src += sl)
-                memcpy(dst, src, b);
-        }
+        // Copy line by line
+        unsigned int sl = mSpec->srcGeometry.stride, dl = b->stride;
+        unsigned int h = min(mSpec->srcGeometry.height, b->height);
+        unsigned int w = min(mSpec->srcGeometry.width, b->width);
+        char *src = mData + mFrameIndex * sl * mSpec->srcGeometry.height * 3 / 2;
+        char *dst = y;
+        for (unsigned int i = 0; i < h; i++, dst += dl, src += sl)
+            memcpy(dst, src, w);
+        dst = uv;
+        for (unsigned int i = 0; i < h / 2; i++, dst += dl, src += sl)
+            memcpy(dst, src, w);
 
         mapper.unlock(b->handle);
         window.get()->queueBuffer(window.get(), b);
