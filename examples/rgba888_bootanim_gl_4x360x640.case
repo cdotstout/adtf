@@ -1,0 +1,91 @@
+# Render 4 boot animations with OpenGL
+# To avoid filling the vram completely, we use only the first
+# 30 frames for each surface. This is set by the number appended to content
+
+surface
+name boot0
+format PIXEL_FORMAT_RGBA_8888
+buffer_format PIXEL_FORMAT_RGBA_8888
+zorder 190000
+render_flags GL
+width 360
+height 640
+stride 360
+output 0 0 360 640
+contenttype file
+content rgba888_bootanim_360x640.raw 30
+update_iterations 500
+update_latency 0
+update_content_on 1
+update_content_off 0
+update_output_step 0 0 0 0 
+update_output_limit 50 50 300 0
+update_content_show_on 1
+update_content_show_off 0
+flags 0 
+
+surface
+name boot1
+format PIXEL_FORMAT_RGBA_8888
+buffer_format PIXEL_FORMAT_RGBA_8888
+zorder 190001
+render_flags KEEPALIVE GL
+width 360
+height 640
+stride 360
+output 360 0 360 640
+contenttype file
+content rgba888_bootanim_360x640.raw 30
+update_iterations 70
+update_latency 83333
+update_content_on 1
+update_content_off 0
+update_output_step 0 0 0 0 
+update_output_limit 50 50 300 0
+update_content_show_on 1
+update_content_show_off 0
+flags 0 
+
+surface
+name boot2
+format PIXEL_FORMAT_RGBA_8888
+buffer_format PIXEL_FORMAT_RGBA_8888
+zorder 190002
+render_flags KEEPALIVE GL
+width 360
+height 640
+stride 360
+output 0 640 360 640
+contenttype file
+content rgba888_bootanim_360x640.raw 30
+update_iterations 200
+update_latency 83333
+update_content_on 1
+update_content_off 0
+update_output_step 0 0 0 0 
+update_output_limit 50 50 300 0
+update_content_show_on 1
+update_content_show_off 0
+flags 0 
+
+surface
+name boot3
+format PIXEL_FORMAT_RGBA_8888
+buffer_format PIXEL_FORMAT_RGBA_8888
+zorder 190003
+render_flags KEEPALIVE GL
+width 360
+height 640
+stride 360
+output 360 640 360 640
+contenttype file
+content rgba888_bootanim_360x640.raw 30
+update_iterations 100
+update_latency 83333
+update_content_on 1
+update_content_off 0
+update_output_step 0 0 0 0 
+update_output_limit 50 50 300 0
+update_content_show_on 1
+update_content_show_off 0
+flags 0

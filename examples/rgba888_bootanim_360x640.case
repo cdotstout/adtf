@@ -1,0 +1,21 @@
+surface
+name boot
+format PIXEL_FORMAT_RGBA_8888
+zorder 190000
+width 360
+height 640
+stride 360
+crop 0 0 360 640
+output 0 0 720 1280
+contenttype file
+content rgba888_bootanim_360x640.raw
+update_iterations 500
+update_latency 33000
+update_content_on 1
+update_content_off 0
+update_output_step 0 0 0 0 
+update_output_limit 0 0 0 0
+update_content_show_on 1
+update_content_show_off 0
+flags 0 
+

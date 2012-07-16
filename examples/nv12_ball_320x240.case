@@ -1,0 +1,50 @@
+surface
+name nv12_ball_320x240
+contenttype file
+content nv12_ball_320x240.raw
+format PIXEL_FORMAT_RGB_565
+buffer_format 256
+render_flags KEEPALIVE
+zorder 960000
+width 320
+height 240
+stride 320
+output 0 0 320 240
+update_iterations 1000
+update_latency 33333
+update_content_on 1
+flags 1024
+
+surface
+name nv12_ball_320x240_fast
+contenttype file
+content nv12_ball_320x240.raw
+format PIXEL_FORMAT_RGB_565
+buffer_format 256
+render_flags KEEPALIVE
+zorder 960000
+width 320
+height 240
+stride 320
+output 320 0 320 240
+update_iterations 1000
+update_latency 0
+update_content_on 1
+flags 1024
+
+surface
+name nv12_ball_320x240_async
+contenttype file
+content nv12_ball_320x240.raw
+format PIXEL_FORMAT_RGB_565
+buffer_format 256
+render_flags KEEPALIVE ASYNC
+zorder 960000
+width 320
+height 240
+stride 320
+output 640 0 320 240
+update_iterations 1000
+update_latency 0
+update_content_on 1
+flags 1024

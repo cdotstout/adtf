@@ -1,0 +1,106 @@
+# This is a comment, empty lines are ignored
+
+# Keyword 'surface' marks the start of a surface spec
+surface
+
+# used in call to createSurface, shows up in dumpsys SurfaceFlinger
+name descriptive_name
+
+# render_flags are used locally in the application (compare to flags)
+# Values are ints as defined in the application header files, or names:
+# KEEPALIVE, GL, ASYNC
+#
+# KEEPALIVE means surface should remain in its last state when update thread
+# completes. Not set means surface and all resources should be freed when update
+# thread completes, even if other surfaces are still updating
+#
+# GL means surface is rendered with OpenGL vs. updating surface data directly
+#
+# ASYNC Tries to set surface to asynchronous mode by connecting it to MEDA API.
+# This is not supported for all surfaces, intended use is to simulate camera
+# preview and video playback.
+render_flags KEEPALIVE
+
+# Set to either name (PIXEL_FORMAT_OPAQUE) or int value (-1) from PixelFormat.h
+format PIXEL_FORMAT_BGRA_8888
+
+# zOrder per SurfaceFlinger
+zorder 50001
+
+# Source width
+width 128
+
+# Source height
+height 320
+
+# Surface initial output coords.
+# Format: x y w h (w/h defaults to src dimensions)
+output 100 100
+
+# SOLID fill surface with a solid color
+# FILE read surface from file
+contenttype solid
+
+# File path or solid colors in hex, separated by space
+# random is a supported special value. Note that the hex values are
+# interpreted as raw bytes, except for GL surfaces which read them as RGBA
+content FF0000FF 00FF00FF 0000FFFF random
+
+# Total number of iterations for this surfaces update thread
+update_iterations 100
+
+# Sleep time between iterations (us). Use 0 for max update freq.
+update_latency 100000
+
+# Update content for x consecutive iterations
+update_content_on 1
+
+# Don't update content for x consecutive iterations
+update_content_off 0
+
+# Change surface properties in steps each iteration
+# Format: x y w h
+# Negative values supported. Note that a change off size triggers a
+# content update every iteration, effectively overriding update_content_on/off
+# This example moves surface 3px in the positive x dir and 10px in positive y
+# Size is unchanged
+update_output_step 3 10 0 0
+
+# Limits for update_output_step. In this example we start at (100,100) and move
+# (3,10) each iteration. x y w h  here gives maximum value of each variable
+# before it's returned to its initial state. Note: For position, make sure limit
+# signedness and value goes well with initial position and step.
+update_output_limit 400 600 0 0
+
+# Surface shown for x consecutive iterations
+update_content_show_on 1
+
+# Surface hidden for x consecutive iterations
+update_content_show_off 0
+
+# Flags as per SurfaceFlinger
+flags 0
+
+
+# Lookie here; another surface! Add as many as you need below.
+
+surface
+name wallpaper
+format PIXEL_FORMAT_BGRA_8888
+zorder 50000      
+width 1440
+height 1280
+output 0 0
+contenttype file
+content wallpaper.raw
+update_iterations 6000
+update_latency 10000
+update_content_on 1
+update_content_off 0
+update_output_step -1 0 0 0 
+update_output_limit -720 0 0 0
+update_content_show_on 1
+update_content_show_off 0
+flags 0 
+
+

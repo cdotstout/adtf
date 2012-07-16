@@ -1,0 +1,35 @@
+surface
+name nv12_smpte_640x480
+render_flags ASYNC
+contenttype file
+content nv12_smpte_640x480.raw
+format PIXEL_FORMAT_RGB_565
+buffer_format 256
+zorder 960000
+width 640
+height 480
+stride 640
+output 0 0 640 480
+update_iterations 1000
+update_latency 33333
+update_content_on 1
+flags 1024
+
+# Same surface but translated and rotated
+surface
+name nv12_smpte_640x480_2
+render_flags ASYNC
+contenttype file
+content nv12_smpte_640x480.raw
+format PIXEL_FORMAT_RGB_565
+buffer_format 256
+zorder 960000
+width 640
+height 480
+stride 640
+output 640 0 480 640
+transform NATIVE_WINDOW_TRANSFORM_ROT_90
+update_iterations 500
+update_latency 33333
+update_content_on 1
+flags 1024

@@ -1,0 +1,16 @@
+surface
+name nv12_solid_scaled
+contenttype solid
+content FF00 00FF random
+format PIXEL_FORMAT_RGB_565
+buffer_format HAL_PIXEL_FORMAT_TI_NV12
+zorder 960001
+width 100
+height 100
+output 0 0 500 700
+update_iterations 1000
+update_latency 10000
+update_content_on 1
+update_output_step 3 10 0 0
+update_output_limit 400 600 0 0
+flags 1024

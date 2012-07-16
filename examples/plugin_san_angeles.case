@@ -1,0 +1,14 @@
+surface
+name sanangeles
+contenttype plugin
+content /data/local/libsanangeles.so
+format PIXEL_FORMAT_RGB_565
+zorder 960000
+width 320
+height 240
+stride 320
+output 0 0 640 480
+update_iterations 500
+update_latency 0
+update_content_on 1
+flags 1024
