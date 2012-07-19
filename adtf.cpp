@@ -35,7 +35,6 @@
 #include <iostream>
 
 #include <binder/ProcessState.h>
-#include <surfaceflinger/ISurfaceComposer.h>
 
 #if defined(HAVE_PTHREADS)
 # include <pthread.h>

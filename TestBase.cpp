@@ -32,8 +32,6 @@
 
 #define LOG_TAG "adtf"
 
-#include <surfaceflinger/ISurfaceComposer.h>
-
 #include <unistd.h>
 #include <vector>
 

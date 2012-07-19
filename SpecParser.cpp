@@ -136,12 +136,14 @@ inline PixelFormat parsePixelFormat(stringstream& ss, string line, string filena
             f = PIXEL_FORMAT_RGBA_4444;
         else if (pf == "PIXEL_FORMAT_A_8")
             f = PIXEL_FORMAT_A_8;
+#ifdef ADTF_ICS_AND_EARLIER
         else if (pf == "PIXEL_FORMAT_L_8")
             f = PIXEL_FORMAT_L_8;
         else if (pf == "PIXEL_FORMAT_LA_88")
             f = PIXEL_FORMAT_LA_88;
         else if (pf == "PIXEL_FORMAT_RGB_332")
             f = PIXEL_FORMAT_RGB_332;
+#endif
         else if (pf == "HAL_PIXEL_FORMAT_TI_NV12")
             f = HAL_PIXEL_FORMAT_TI_NV12;
         else

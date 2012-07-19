@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <sstream>
 
+#include "LocalTypes.h"
 #include "Stat.h"
 
 using namespace android;

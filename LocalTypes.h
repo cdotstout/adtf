@@ -39,6 +39,20 @@
 #include <utils/List.h>
 #include <string>
 
+#ifdef ADTF_ICS_AND_EARLIER
+#include <surfaceflinger/Surface.h>
+#include <surfaceflinger/SurfaceComposerClient.h>
+#include <surfaceflinger/ISurfaceComposer.h>
+#else
+#include <Surface.h>
+#include <SurfaceComposerClient.h>
+#include <ISurfaceComposer.h>
+#define LOGD ALOGD
+#define LOGW ALOGW
+#define LOGE ALOGE
+#define LOGI ALOGI
+#endif
+
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 
 namespace ContentType {

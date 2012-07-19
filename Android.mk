@@ -31,6 +31,14 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
+PLATFORM_VERSION_MAJ   := $(shell echo $(PLATFORM_VERSION) | cut -f1 -d'.')
+PLATFORM_VERSION_MIN   := $(shell echo $(PLATFORM_VERSION) | cut -f2 -d'.')
+PLATFORM_VERSION_PATCH := $(shell echo $(PLATFORM_VERSION) | cut -f3 -d'.')
+
+is_jb_or_later := $(shell ( test $(PLATFORM_VERSION_MAJ) -gt 4 || \
+                    ( test $(PLATFORM_VERSION_MAJ) -eq 4 && \
+                      test $(PLATFORM_VERSION_MIN) -ge 1 ) ) && echo 1 || echo 0)
+
 LOCAL_SRC_FILES:= \
     adtf.cpp \
     FileThread.cpp \
@@ -57,6 +65,12 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES := \
     bionic \
     external/stlport/stlport \
+
+ifeq ($(is_jb_or_later),1)
+LOCAL_C_INCLUDES += frameworks/native/include/gui
+else
+LOCAL_CFLAGS += -DADTF_ICS_AND_EARLIER
+endif
 
 LOCAL_MODULE:= adtf
 

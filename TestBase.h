@@ -37,8 +37,6 @@
 #include <utils/List.h>
 #include <utils/threads.h>
 
-#include <surfaceflinger/Surface.h>
-#include <surfaceflinger/SurfaceComposerClient.h>
 #include <ui/DisplayInfo.h>
 #include <ui/GraphicBufferMapper.h>
 
