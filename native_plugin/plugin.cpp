@@ -36,7 +36,11 @@
 #include <limits.h>
 
 #include <ui/FramebufferNativeWindow.h>
+#ifdef ADTF_ICS_AND_EARLIER
 #include <ui/EGLUtils.h>
+#else
+#include <EGLUtils.h>
+#endif
 
 #define RETURN_IF_FALSE(x,r) do {bool b = bool(x); if (!b) return r;} while(0)
 
