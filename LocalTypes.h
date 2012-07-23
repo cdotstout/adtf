@@ -47,6 +47,8 @@
 #include <Surface.h>
 #include <SurfaceComposerClient.h>
 #include <ISurfaceComposer.h>
+#include <gui/DisplayEventReceiver.h>
+#include <utils/Looper.h>
 #define LOGD ALOGD
 #define LOGW ALOGW
 #define LOGE ALOGE
@@ -64,7 +66,8 @@ namespace RenderFlags {
         KEEPALIVE       = 1 << 0,
         GL              = 1 << 1,
         ASYNC           = 1 << 2,
-        SILENT          = 1 << 3
+        SILENT          = 1 << 3,
+        VSYNC           = 1 << 4,
     };
 };
 

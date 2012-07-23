@@ -48,12 +48,20 @@ TestBase::TestBase(sp<SurfaceSpec> spec, sp<SurfaceComposerClient> client,
     mSteppingPos(true), mSizeCount(0), mSteppingSize(true), mLeftStepFactor(1),
     mTopStepFactor(1), mWidthStepFactor(1), mHeightStepFactor(1)
 {
+#ifndef ADTF_ICS_AND_EARLIER
+    mEventReceiver = NULL;
+#endif
     LOGD("\"%s\" thread created", mSpec->name.c_str());
 }
 
 TestBase::~TestBase()
 {
     freeEgl();
+
+#ifndef ADTF_ICS_AND_EARLIER
+    if (mEventReceiver)
+        delete mEventReceiver;
+#endif
 
     LOGD("\"%s\" thread going away", mSpec->name.c_str());
 }
@@ -85,6 +93,27 @@ status_t TestBase::readyToRun()
         signalExit();
         return status;
     }
+
+#ifndef ADTF_ICS_AND_EARLIER
+    if (mSpec->renderFlag(RenderFlags::VSYNC)) {
+        if (!mEventReceiver)
+            mEventReceiver = new DisplayEventReceiver();
+        status = mEventReceiver->initCheck();
+        if (status != NO_ERROR) {
+            LOGE("\"%s\" failed DisplayEventReceiver init check", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
+        mEventLooper = new Looper(true);
+        mEventLooper->addFd(mEventReceiver->getFd(), 0, ALOOPER_EVENT_INPUT, 0, 0);
+        status = mEventReceiver->requestNextVsync();
+        if (status != NO_ERROR) {
+            LOGE("\"%s\" failed to request vsync", mSpec->name.c_str());
+            signalExit();
+            return status;
+        }
+    }
+#endif
 
     if (done()) {
         status = UNKNOWN_ERROR;
@@ -705,6 +734,18 @@ bool TestBase::threadLoop()
                 usleep (sleepTime);
             mLastIter = systemTime();
         }
+
+#ifndef ADTF_ICS_AND_EARLIER
+        if (mEventReceiver) {
+            mEventLooper->pollOnce(-1);
+            while (mEventReceiver->getEvents(mEventBuffer, 100) > 0);
+            if (mEventReceiver->requestNextVsync() != NO_ERROR) {
+                LOGE("\"%s\" failed to request vsync", mSpec->name.c_str());
+                signalExit();
+                return false;
+            }
+        }
+#endif
 
         positionChange = updatePosition();
         sizeChange = updateSize();

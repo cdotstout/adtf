@@ -114,6 +114,12 @@ class TestBase : public Thread {
 
         nsecs_t mLastIter;
         Stat mStat;
+
+#ifndef ADTF_ICS_AND_EARLIER
+        DisplayEventReceiver *mEventReceiver;
+        DisplayEventReceiver::Event mEventBuffer[100];
+        sp<Looper> mEventLooper;
+#endif
 };
 
 #endif
