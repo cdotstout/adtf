@@ -142,15 +142,23 @@ status_t TestBase::readyToRun()
             status |= w->query(w, NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &min);
             status |= native_window_set_usage(w, GRALLOC_USAGE);
             status |= native_window_set_buffer_count(w, min + 1);
-            status |= native_window_set_buffers_dimensions(w, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
             status |= native_window_set_buffers_format(w, mSpec->bufferFormat);
-            status |= native_window_set_scaling_mode(w, NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
             if (status != 0) {
-                LOGE("\"%s\" failed to init buffers", mSpec->name.c_str());
+                LOGE("\"%s\" failed to configure buffer usage/count/format", mSpec->name.c_str());
                 signalExit();
                 return status;
             }
         }
+    }
+
+    // Default is to dequeue buffers with same dimensions as the surface.
+    // Override this, but it will silently be reverted by the GL driver if used
+    status |= native_window_set_buffers_dimensions(w, mSpec->srcGeometry.width, mSpec->srcGeometry.height);
+    status |= native_window_set_scaling_mode(w, NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
+    if (status != 0) {
+        LOGE("\"%s\" failed to configure buffer dimension/scaling", mSpec->name.c_str());
+        signalExit();
+        return status;
     }
 
     if (mSpec->srcGeometry.crop.isValid()) {
