@@ -146,6 +146,8 @@ inline PixelFormat parsePixelFormat(stringstream& ss, string line, string filena
 #endif
         else if (pf == "HAL_PIXEL_FORMAT_TI_NV12")
             f = HAL_PIXEL_FORMAT_TI_NV12;
+        else if (pf == "HAL_PIXEL_FORMAT_TI_BGRX")
+            f = HAL_PIXEL_FORMAT_TI_BGRX;
         else
             LOGW("%s:%u unknown %s '%s'", filename.c_str(), n, prop.c_str(), pf.c_str());
     }

@@ -50,7 +50,9 @@ status_t SolidThread::readyToRun()
     stringstream ss(stringstream::in | stringstream::out);
     ss.str(mSpec->content);
 
-    mBpp = (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_NV12) ? 2 : bytesPerPixel(mSpec->format);
+    mBpp = (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_NV12) ? 2 :
+           (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_BGRX) ? 4 :
+            bytesPerPixel(mSpec->format);
     if (mBpp > 4 || mBpp < 1) {
         LOGE("\"%s\" can't handle %d bytes per pixel", mSpec->name.c_str(), mBpp);
         signalExit();

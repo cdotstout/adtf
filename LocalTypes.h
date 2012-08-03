@@ -56,6 +56,7 @@
 #endif
 
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
+#define HAL_PIXEL_FORMAT_TI_BGRX 0x1FF
 
 namespace ContentType {
     enum Enum { SOLID, FILE, PLUGIN };

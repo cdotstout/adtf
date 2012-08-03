@@ -116,7 +116,11 @@ status_t FileThread::readyToRun()
     if (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_NV12) {
         mFrameSize = mSpec->srcGeometry.stride * mSpec->srcGeometry.height * 3 / 2;
     } else {
-        mBpp = bytesPerPixel(mSpec->bufferFormat);
+        if (mSpec->bufferFormat == HAL_PIXEL_FORMAT_TI_BGRX) {
+            mBpp = 4;
+        } else {
+            mBpp = bytesPerPixel(mSpec->bufferFormat);
+        }
         mLineByLine = false;
         mFrameSize = mSpec->srcGeometry.stride * mSpec->srcGeometry.height * mBpp;
 
@@ -205,6 +209,7 @@ bool FileThread::initTexture(void* p)
         // Not entierly right, but we care more about rendering something than nothing
         case PIXEL_FORMAT_RGBA_8888:
         case PIXEL_FORMAT_BGRA_8888:
+        case HAL_PIXEL_FORMAT_TI_BGRX:
             if (tw != w || th != h) {
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_RGBA,
                         GL_UNSIGNED_BYTE, 0);
